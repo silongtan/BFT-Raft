@@ -1,5 +1,5 @@
 proto:
-	python -m grpc_tools.protoc -I protos --python_out=. --grpc_python_out=. protos/greet.proto
+	python -m grpc_tools.protoc -I protos --python_out=. --grpc_python_out=. protos/raft.proto
 
 server:
 	python3 rpc/server.py
