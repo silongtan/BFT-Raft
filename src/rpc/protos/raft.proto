@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package raft;
+
+// The greeting service definition.
+service Raft {
+  rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesReply);
+
+  rpc RequestVote (RequestVoteRequest) returns (RequestVoteReply);
+
+  // GetCommittedCmd -- called (only) by the Controller.  This method provides an input argument
+  // `index`.  If the Raft peer has a log entry at the given `index`, and that log entry has been
+  // committed (per the Raft algorithm), then the command stored in the log entry should be returned
+  // to the Controller.  otherwise, the Raft peer should return the value 0, which is not a valid
+  // command number and indicates that no committed log entry exists at that index
+  rpc GetCommittedCmd (GetCommittedCmdRequest) returns (GetCommittedCmdReply);
+
+  rpc GetStatus (GetStatusRequest) returns (GetStatusReply);
+
+  rpc NewCommand (NewCommandRequest) returns (NewCommandReply);
+}
+
+
+message LogEntry {
+  int32 term = 1;
+  string command = 2;
+}
+
+// StatusReport is sent from Raft node to Controller in response to command and status requests.
+message StatusReport{
+  int32 term = 1;
+  int32 committedIndex = 2; //
+  bool isLeader = 3;
+  repeated LogEntry log = 4;
+
+}
+
+message AppendEntriesRequest{
+  int32 term = 1;
+  int32 leaderId = 2;
+  int32 prevLogIndex = 3;
+  int32 prevLogTerm = 4;
+  repeated LogEntry entries = 5;
+  int32 leaderCommit = 6;
+}
+
+message AppendEntriesReply{
+  int32 term = 1;
+  bool success = 2;
+}
+
+message RequestVoteRequest{
+  int32 term = 1;
+  int32 candidateId = 2;
+  int32 lastLogIndex = 3;
+  int32 lastLogTerm = 4;
+}
+
+message RequestVoteReply{
+  int32 term = 1;
+  bool voteMe = 2;
+}
+
+message GetCommittedCmdRequest{
+  int32 index = 1; // index of the command
+}
+
+message GetCommittedCmdReply{
+  //  string command = 1;
+  int32 term = 1; // TODO: what type it should be
+}
+
+message GetStatusRequest{
+  // empty
+}
+
+message GetStatusReply{
+  StatusReport status = 1;
+}
+
+message NewCommandRequest{
+  string command = 1;
+}
+
+message NewCommandReply{
+  StatusReport status = 1;
+}
