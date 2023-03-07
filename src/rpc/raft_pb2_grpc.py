@@ -33,12 +33,12 @@ class RaftStub(object):
         self.GetStatus = channel.unary_unary(
                 '/raft.Raft/GetStatus',
                 request_serializer=raft__pb2.GetStatusRequest.SerializeToString,
-                response_deserializer=raft__pb2.GetStatusReply.FromString,
+                response_deserializer=raft__pb2.StatusReport.FromString,
                 )
         self.NewCommand = channel.unary_unary(
                 '/raft.Raft/NewCommand',
                 request_serializer=raft__pb2.NewCommandRequest.SerializeToString,
-                response_deserializer=raft__pb2.NewCommandReply.FromString,
+                response_deserializer=raft__pb2.StatusReport.FromString,
                 )
 
 
@@ -64,19 +64,22 @@ class RaftServicer(object):
         committed (per the Raft algorithm), then the command stored in the log entry should be returned
         to the Controller.  otherwise, the Raft peer should return the value 0, which is not a valid
         command number and indicates that no committed log entry exists at that index
+        for test only
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetStatus(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """for test only
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def NewCommand(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """send a new command to the Raft peer, mutate state
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -102,12 +105,12 @@ def add_RaftServicer_to_server(servicer, server):
             'GetStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.GetStatus,
                     request_deserializer=raft__pb2.GetStatusRequest.FromString,
-                    response_serializer=raft__pb2.GetStatusReply.SerializeToString,
+                    response_serializer=raft__pb2.StatusReport.SerializeToString,
             ),
             'NewCommand': grpc.unary_unary_rpc_method_handler(
                     servicer.NewCommand,
                     request_deserializer=raft__pb2.NewCommandRequest.FromString,
-                    response_serializer=raft__pb2.NewCommandReply.SerializeToString,
+                    response_serializer=raft__pb2.StatusReport.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -184,7 +187,7 @@ class Raft(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/raft.Raft/GetStatus',
             raft__pb2.GetStatusRequest.SerializeToString,
-            raft__pb2.GetStatusReply.FromString,
+            raft__pb2.StatusReport.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -201,6 +204,6 @@ class Raft(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/raft.Raft/NewCommand',
             raft__pb2.NewCommandRequest.SerializeToString,
-            raft__pb2.NewCommandReply.FromString,
+            raft__pb2.StatusReport.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

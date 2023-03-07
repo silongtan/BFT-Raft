@@ -13,11 +13,14 @@ service Raft {
   // committed (per the Raft algorithm), then the command stored in the log entry should be returned
   // to the Controller.  otherwise, the Raft peer should return the value 0, which is not a valid
   // command number and indicates that no committed log entry exists at that index
+  // for test only
   rpc GetCommittedCmd (GetCommittedCmdRequest) returns (GetCommittedCmdReply);
 
-  rpc GetStatus (GetStatusRequest) returns (GetStatusReply);
+  // for test only
+  rpc GetStatus (GetStatusRequest) returns (StatusReport);
 
-  rpc NewCommand (NewCommandRequest) returns (NewCommandReply);
+  // send a new command to the Raft peer, mutate state
+  rpc NewCommand (NewCommandRequest) returns (StatusReport);
 }
 
 
@@ -26,10 +29,11 @@ message LogEntry {
   string command = 2;
 }
 
+
 // StatusReport is sent from Raft node to Controller in response to command and status requests.
 message StatusReport{
   int32 term = 1;
-  int32 committedIndex = 2; //
+  int32 committedIndex = 2;
   bool isLeader = 3;
   repeated LogEntry log = 4;
 
@@ -74,14 +78,8 @@ message GetStatusRequest{
   // empty
 }
 
-message GetStatusReply{
-  StatusReport status = 1;
-}
+
 
 message NewCommandRequest{
   string command = 1;
-}
-
-message NewCommandReply{
-  StatusReport status = 1;
 }

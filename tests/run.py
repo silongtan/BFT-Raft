@@ -1,4 +1,5 @@
-from raft import raft
+from raft import raft, client
+
 
 def run():
     rpc_port = ["5000", "5001", "5002"]
