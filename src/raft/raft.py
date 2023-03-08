@@ -32,17 +32,6 @@ class Raft(RaftServicer):
         self.timer = time.time() + random.randint(2, 7)
         self.timeout_thread = None
 
-    ### Vote section
-    def request_vote(self, request, stub):
-        pass
-        # if (self.role == C):
-        #     response = stub.RequestVote(request)
-        #     if response.voteMe:
-        #         self.voteReceived += 1
-
-    def handle_vote(self, request, context):
-        pass
-
     def AppendEntries(self, request, context):
         return dispatch(self.role,  AppendEntriesHandler())
 
