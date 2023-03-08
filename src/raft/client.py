@@ -52,3 +52,8 @@ if __name__ == '__main__':
     client.send_new_command("test")
     client.send_get_status()
     client.send_get_committed_cmd("localhost:5000")
+    with grpc.insecure_channel("localhost:5000") as channel:
+        stub = raft_pb2_grpc.RaftStub(channel)
+        get_committed_cmd_request = raft_pb2.GetCommittedCmdRequest()
+        status_reply = stub.GetCommittedCmd(get_committed_cmd_request)
+        print(status_reply)

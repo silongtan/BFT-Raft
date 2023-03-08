@@ -1,24 +1,24 @@
-from rpc.raft_pb2_grpc import RaftServicer
-import grpc
-import rpc.raft_pb2 as raft_pb2
-import rpc.raft_pb2_grpc as raft_pb2_grpc
-from concurrent import futures
-import rpc
-import threading
-import time
 import random
+import time
+from concurrent import futures
 
-F = "follower"
-C = "candidate"
-L = "leader"
+import grpc
+
+# import rpc.raft_pb2 as raft_pb2
+import rpc.raft_pb2_grpc as raft_pb2_grpc
+from rpc.raft_pb2_grpc import RaftServicer
+
+from client_rpc_handler import RoleType, ClientRPCHandler
+from role_type import RoleType, dispatch
+from rpc_visitor import AppendEntriesHandler, RequestVoteHandler
+
 
 class Raft(RaftServicer):
 
     def __init__(self):
-        pass
         self.term = 0
         self.log = {}
-        self.role = F
+        self.role = RoleType.FOLLOWER
         self.isLeader = False
         self.majority = False
         # vote
@@ -29,51 +29,34 @@ class Raft(RaftServicer):
         self.last_log_index = 0
         self.last_log_term = 0
         # timer
-        self.timer = time.time() + random.randint(2,7)
+        self.timer = time.time() + random.randint(2, 7)
         self.timeout_thread = None
 
     ### Vote section
     def request_vote(self, request, stub):
-        if (self.role == C):
-            response = stub.RequestVote(request)
-            if response.voteMe:
-                self.voteReceived += 1
+        pass
+        # if (self.role == C):
+        #     response = stub.RequestVote(request)
+        #     if response.voteMe:
+        #         self.voteReceived += 1
 
     def handle_vote(self, request, context):
         pass
 
-
-
-
-    # def NewCommand(self, request, context):
-    #     print("NewCommand")
-    #     status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,
-    #                                          log=[{'term': 1, 'command': "test"}])
-
-    #     print(status_reply)
-
-    #     return status_reply
-
-    def GetStatus(self, request, context):
-        print("GetStatus from raft")
-        status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,
-                                             log=[{'term': 1, 'command': "test"}])
-
-        print(status_reply)
-
-        return status_reply
-
     def AppendEntries(self, request, context):
-        print("AppendEntries")
-        return raft_pb2.AppendEntriesReply(status="OK")
+        return dispatch(self.role,  AppendEntriesHandler())
 
     def RequestVote(self, request, context):
-        print("RequestVote")
-        return raft_pb2.RequestVoteReply()
+        return dispatch(self.role, RequestVoteHandler())
+
+    def NewCommand(self, request, context):
+        return ClientRPCHandler.handle_new_command()
+
+    def GetStatus(self, request, context):
+        return ClientRPCHandler.handle_get_status()
 
     def GetCommittedCmd(self, request, context):
-        print("GetCommittedCmd")
-        return raft_pb2.GetCommittedCmdReply(term=1)
+        return ClientRPCHandler.handle_get_committed_cmd()
 
 
 def serve():
