@@ -32,28 +32,6 @@ class Raft(RaftServicer):
         self.timer = time.time() + random.randint(2,7)
         self.timeout_thread = None
 
-    ### Vote section
-    def request_vote(self, request, stub):
-        if (self.role == C):
-            response = stub.RequestVote(request)
-            if response.voteMe:
-                self.voteReceived += 1
-
-    def handle_vote(self, request, context):
-        pass
-
-
-
-
-    # def NewCommand(self, request, context):
-    #     print("NewCommand")
-    #     status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,
-    #                                          log=[{'term': 1, 'command': "test"}])
-
-    #     print(status_reply)
-
-    #     return status_reply
-
     def GetStatus(self, request, context):
         print("GetStatus from raft")
         status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,
