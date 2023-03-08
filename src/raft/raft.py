@@ -1,26 +1,58 @@
-# import rpc.raft_pb2
 from rpc.raft_pb2_grpc import RaftServicer
 import grpc
 import rpc.raft_pb2 as raft_pb2
 import rpc.raft_pb2_grpc as raft_pb2_grpc
 from concurrent import futures
+import rpc
+import threading
+import time
+import random
 
+F = "follower"
+C = "candidate"
+L = "leader"
 
 class Raft(RaftServicer):
 
     def __init__(self):
         pass
+        self.term = 0
+        self.log = {}
+        self.role = F
+        self.isLeader = False
+        self.majority = False
+        # vote
+        self.voteFor = None
+        self.voteReceived = 0
+        # log & commit
+        self.committedIndex = 0
+        self.last_log_index = 0
+        self.last_log_term = 0
+        # timer
+        self.timer = time.time() + random.randint(2,7)
+        self.timeout_thread = None
+
+    ### Vote section
+    def request_vote(self, request, stub):
+        if (self.role == C):
+            response = stub.RequestVote(request)
+            if response.voteMe:
+                self.voteReceived += 1
+
+    def handle_vote(self, request, context):
+        pass
 
 
 
-    def NewCommand(self, request, context):
-        print("NewCommand")
-        status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,
-                                             log=[{'term': 1, 'command': "test"}])
 
-        print(status_reply)
+    # def NewCommand(self, request, context):
+    #     print("NewCommand")
+    #     status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,
+    #                                          log=[{'term': 1, 'command': "test"}])
 
-        return status_reply
+    #     print(status_reply)
+
+    #     return status_reply
 
     def GetStatus(self, request, context):
         print("GetStatus from raft")
