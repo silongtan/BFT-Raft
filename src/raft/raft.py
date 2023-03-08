@@ -32,6 +32,15 @@ class Raft(RaftServicer):
         self.timer = time.time() + random.randint(2,7)
         self.timeout_thread = None
 
+    def NewCommand(self, request, context):
+        print("NewCommand")
+        status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,
+                                             log=[{'term': 1, 'command': "test"}])
+
+        print(status_reply)
+
+        return status_reply
+
     def GetStatus(self, request, context):
         print("GetStatus from raft")
         status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,
