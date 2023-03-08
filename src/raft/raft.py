@@ -1,4 +1,4 @@
-import rpc.raft_pb2
+# import rpc.raft_pb2
 from rpc.raft_pb2_grpc import RaftServicer
 import grpc
 import rpc.raft_pb2 as raft_pb2
@@ -7,6 +7,12 @@ from concurrent import futures
 
 
 class Raft(RaftServicer):
+
+    def __init__(self):
+        pass
+
+
+
     def NewCommand(self, request, context):
         print("NewCommand")
         status_reply = raft_pb2.StatusReport(term=1, committedIndex=2, isLeader=True,

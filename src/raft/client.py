@@ -7,7 +7,7 @@ import rpc.raft_pb2_grpc as raft_pb2_grpc
 class Client:
     raft_replicas = []
 
-    def __init__(self, replicas: []):
+    def __init__(self, replicas: list):
         self.raft_replicas = replicas
 
     def __choose_replica(self) -> str:
