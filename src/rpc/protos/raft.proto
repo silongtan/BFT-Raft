@@ -25,7 +25,7 @@ service Raft {
 
 
 message LogEntry {
-  int32 term = 1;
+  int32 term = 1; // term when entry was received by leader
   string command = 2;
 }
 
@@ -45,7 +45,7 @@ message AppendEntriesRequest{
   int32 prevLogIndex = 3;
   int32 prevLogTerm = 4;
   repeated LogEntry entries = 5;
-  int32 leaderCommit = 6;
+  int32 leaderCommitIndex = 6;
 }
 
 message AppendEntriesReply{
