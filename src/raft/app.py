@@ -20,5 +20,6 @@ class Application:
                 if len(self.dict[key]) == 1:
                     self.dict.pop(key)
                 else:
-                    self.dict[key].remove(value)
+                    if value in self.dict[key]:
+                        self.dict[key].remove(value)
         
