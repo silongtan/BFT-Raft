@@ -116,7 +116,7 @@ class Raft(RaftServicer):
         pass
 
     def become(self, role: RoleType):
-        logging.debug("become " + str(role))
+        logging.debug("become " + str(role) + ", current term: " + str(self.term))
         self.role = role
         dispatch(self).run()
 
