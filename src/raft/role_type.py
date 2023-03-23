@@ -40,31 +40,33 @@ class _Role:
     # TODO:If AppendEntries RPC received from new leader: convert to
     # follower
     def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
-        pass
-        # leader_term = request.term
-        # leader_id = request.leaderId
-        # prev_log_index = request.prevLogIndex
-        # prev_log_term = request.prevLogTerm
-        # leader_commit_index = request.leaderCommitIndex
-        # success = False
-        # if leader_term < self.server.term:
-        #     success = False
-        # else:
-        #     self.server.become(RoleType.FOLLOWER)
-        #     if prev_log_index == -1:
-        #         success = True
-        #         self.server.log = request.entries
-        #     elif prev_log_term == self.server.log[prev_log_index].term and len(self.server.log) > prev_log_index:
-        #         success = True
-        #         self.server.log = self.server.log[:prev_log_index + 1] + request.entries
-        # if leader_commit_index > self.server.committed_index:
-        #     self.server.commit_index = min(leader_commit_index, len(self.server.log) - 1)
-        # if leader_term > self.server.term:
-        #     self.server.term = leader_term
-        #
-        # self.server.reset_timer(self.server.leader_died, HEARTBEAT_INTERVAL_SECONDS)
-        # reply = {"term": self.server.term, "success": success}
-        # return raft_pb2.AppendEntriesReply(**reply)
+        # pass
+        leader_term = request.term
+        leader_id = request.leaderId
+        prev_log_index = request.prevLogIndex
+        prev_log_term = request.prevLogTerm
+        leader_commit_index = request.leaderCommitIndex
+        success = False
+        if leader_term < self.server.term:
+            success = False
+        else:
+            print("this is because leader send append entries to cause this server become follower")
+            self.server.become(RoleType.FOLLOWER)
+            if prev_log_index == -1:
+                success = True
+                self.server.log = request.entries
+            elif prev_log_term == self.server.log[prev_log_index].term and len(self.server.log) > prev_log_index:
+                success = True
+                self.server.log = self.server.log[:prev_log_index + 1] + request.entries
+        if leader_commit_index > self.server.committed_index:
+            self.server.commit_index = min(leader_commit_index, len(self.server.log) - 1)
+            self.server.apply_log(self.server.commit_index)
+        if leader_term > self.server.term:
+            self.server.term = leader_term
+
+        self.server.reset_timer(self.server.leader_died, self.server.timeout)
+        reply = {"term": self.server.term, "success": success}
+        return raft_pb2.AppendEntriesReply(**reply)
 
 
 class _Follower(_Role):
@@ -74,8 +76,8 @@ class _Follower(_Role):
         self.server.votes_granted = 0
         self.server.timeout = float(
             randrange(ELECTION_TIMEOUT_MAX_MILLIS // 2, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
-        # self.server.reset_timer(self.server.leader_died, HEARTBEAT_INTERVAL_SECONDS)
-        self.server.reset_timer(lambda : print("reachingiiiiiiiii"), self.server.timeout)
+        # self.server.reset_timer(self.server.leader_died, LEADER_TIMEOUT_SECONDS)
+        self.server.reset_timer(lambda: print("reachingiiiiiiiii"), self.server.timeout)
 
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
         should_vote = False
@@ -96,17 +98,17 @@ class _Follower(_Role):
         reply = {'term': self.server.term, 'voteMe': should_vote}
         return raft_pb2.RequestVoteReply(**reply)
 
-    def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
-        leader_term = request.term
-        leader_id = request.leaderId
-        prev_log_index = request.prevLogIndex
-        prev_log_term = request.prevLogTerm
-        leader_commit_index = request.leaderCommitIndex
-        success = False
-        self.server.reset_timeout()
-        if leader_term < self.server.term:
-            return raft_pb2.AppendEntriesReply(term=self.server.term, success=False)
-        # TODO:
+    # def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
+    #     leader_term = request.term
+    #     leader_id = request.leaderId
+    #     prev_log_index = request.prevLogIndex
+    #     prev_log_term = request.prevLogTerm
+    #     leader_commit_index = request.leaderCommitIndex
+    #     success = False
+    #     self.server.reset_timeout()
+    #     if leader_term < self.server.term:
+    #         return raft_pb2.AppendEntriesReply(term=self.server.term, success=False)
+    #     # TODO:
 
 
 class _Candidate(_Role):
@@ -147,7 +149,7 @@ class _Candidate(_Role):
                     self.server.votes_granted = 0
                     self.server.timeout = float(
                         randrange(ELECTION_TIMEOUT_MAX_MILLIS // 2, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
-                    self.server.reset_timer(self.server.leader_died, HEARTBEAT_INTERVAL_SECONDS)
+                    self.server.reset_timer(self.server.leader_died, self.server.timeout)
         except grpc.RpcError as e:
             print(e)
             logging.error("connection error")
@@ -158,42 +160,51 @@ class _Candidate(_Role):
             # logging.info("become leader")
             self.server.become(RoleType.LEADER)
         else:
+            print("process vote fail, become follower")
             self.server.become(RoleType.CANDIDATE)
 
-    def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
-        leader_term = request.term
-        leader_id = request.leaderId
-        prev_log_index = request.prevLogIndex
-        prev_log_term = request.prevLogTerm
-        leader_commit_index = request.leaderCommitIndex
-
-        if leader_term > self.server.term:
-            self.server.become(RoleType.FOLLOWER)
-        elif prev_log_term > self.server.get_last_log_term():
-            self.server.become(RoleType.FOLLOWER)
-        elif prev_log_term == self.server.get_last_log_term() and prev_log_index >= self.server.get_last_log_index():
-            self.server.become(RoleType.FOLLOWER)
-        return raft_pb2.AppendEntriesReply(term=self.server.term, success=False)
+    # def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
+    #     leader_term = request.term
+    #     leader_id = request.leaderId
+    #     prev_log_index = request.prevLogIndex
+    #     prev_log_term = request.prevLogTerm
+    #     leader_commit_index = request.leaderCommitIndex
+    #
+    #     if leader_term > self.server.term:
+    #         print(0)
+    #         self.server.become(RoleType.FOLLOWER)
+    #     elif prev_log_term > self.server.get_last_log_term():
+    #         print(1)
+    #         self.server.become(RoleType.FOLLOWER)
+    #     elif prev_log_term == self.server.get_last_log_term() and prev_log_index >= self.server.get_last_log_index():
+    #         print(2)
+    #         self.server.become(RoleType.FOLLOWER)
+    #     return raft_pb2.AppendEntriesReply(term=self.server.term, success=False)
 
 
 class _Leader(_Role):
     def run(self):
-        print("I am leader leading")
+        print("I am leader leading in term:", self.server.term)
         self.server.next_index = {key: len(self.server.log) for key in self.server.peers}
         self.server.match_index = {key: -1 for key in self.server.peers}
         # TODO: heartbeat
-        self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
+        self.broadcast_append_entries()
 
     def broadcast_append_entries(self):
         # TODO: multi-thread
+        print("broadcast append entries")
         for value in self.server.peers:
             self.send_append_entries(value)
+        self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
 
     def send_append_entries(self, address: str):
         try:
             with grpc.insecure_channel(address) as channel:
                 stub = raft_pb2_grpc.RaftStub(channel)
+
                 prev_log_index = self.server.next_index[address] - 1
+                # print()
+                # print('print(prev_log_index)',prev_log_index)
                 entries = self.server.log[self.server.next_index[address]:]
                 args = {'term': self.server.term,
                         'leaderId': self.server.id,
@@ -210,16 +221,25 @@ class _Leader(_Role):
                         logging.debug(str(self.server.id) + " send heartbeat to" + address)
                 response = stub.AppendEntries(raft_pb2.AppendEntriesRequest(**args))
                 if response.term > self.server.term:
-
-                    print("will become follower, other is in term: ", response.term, "I am in term: ",self.server.term)
+                    print("will become follower, other is in term: ", response.term, "I am in term: ", self.server.term)
                     self.server.term = response.term
                     self.server.become(RoleType.FOLLOWER)
                 if not response.success:
-                    self.server.next_index[address] -= 1
+                    if self.server.next_index[address] > 0:
+                        self.server.next_index[address] -= 1
                 else:
                     # TODO
                     self.server.next_index[address] += len(entries)
                     self.server.match_index[address] = self.server.next_index[address] - 1
+                for i in range(self.server.committed_index + 1, len(self.server.log)):
+                    if self.server.log[i].term == self.server.term:
+                        count = 1
+                        for value in self.server.match_index.values():
+                            if value >= i:
+                                count += 1
+                        if count >= self.server.majority:
+                            self.server.committed_index = i
+                            self.server.apply_log(self.server.committed_index)
 
         except grpc.RpcError as e:
             print(e)

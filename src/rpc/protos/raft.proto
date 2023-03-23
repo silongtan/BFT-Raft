@@ -70,8 +70,8 @@ message GetCommittedCmdRequest{
 }
 
 message GetCommittedCmdReply{
-  //  string command = 1;
-  int32 term = 1; // TODO: what type it should be
+    string command = 1;
+//  int32 term = 1; // TODO: what type it should be
 }
 
 message GetStatusRequest{
