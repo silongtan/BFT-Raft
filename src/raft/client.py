@@ -5,7 +5,6 @@ import rpc.raft_pb2_grpc as raft_pb2_grpc
 
 
 class Client:
-    raft_replicas = []
 
     def __init__(self, replicas: list):
         self.raft_replicas = replicas
@@ -19,8 +18,10 @@ class Client:
     # append_entries
     def send_new_command(self, request: str):
         replica = self.__choose_replica()
+        print(replica)
         with grpc.insecure_channel(replica) as channel:
-            stub = self.stubs[replica]
+            # stub = self.stubs[replica]
+            stub = raft_pb2_grpc.RaftStub(channel)
             new_command_request = raft_pb2.NewCommandRequest(command=request)
             status_reply = stub.NewCommand(new_command_request)
             print(status_reply)
