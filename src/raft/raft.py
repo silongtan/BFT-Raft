@@ -11,7 +11,7 @@ import rpc.raft_pb2 as raft_pb2
 import rpc.raft_pb2_grpc as raft_pb2_grpc
 from rpc.raft_pb2_grpc import RaftServicer
 
-from client_rpc_handler import RoleType, ClientRPCHandler
+# from client_rpc_handler import RoleType, ClientRPCHandler
 from app import Application
 from role_type import RoleType, dispatch
 from random import randrange

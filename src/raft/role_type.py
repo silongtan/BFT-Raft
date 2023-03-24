@@ -33,6 +33,7 @@ class _Role:
 
     # handle receive
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
+        # self.server.reset_timer(self.server.leader_died, self.server.timeout)
         reply = {'term': self.server.term, 'voteMe': False}
         return raft_pb2.RequestVoteReply(**reply)
 
@@ -74,10 +75,9 @@ class _Follower(_Role):
         # print('test')f
         self.server.vote_for = -1
         self.server.votes_granted = 0
-        self.server.timeout = float(
-            randrange(ELECTION_TIMEOUT_MAX_MILLIS // 2, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
-        # self.server.reset_timer(self.server.leader_died, LEADER_TIMEOUT_SECONDS)
-        self.server.reset_timer(lambda: print("reachingiiiiiiiii"), self.server.timeout)
+        self.server.reset_timeout()
+        self.server.reset_timer(self.server.leader_died, self.server.timeout)
+        # self.server.reset_timer(lambda: print("reachingiiiiiiiii"), self.server.timeout)
 
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
         should_vote = False
@@ -93,7 +93,10 @@ class _Follower(_Role):
                     should_vote = True
                     self.server.vote_for = candidate_id
                     self.server.term = candidate_term
-                    # TODO: self.server.become(RoleType.FOLLOWER)
+                    # TODO:
+                    self.server.become(RoleType.FOLLOWER)
+        # if should_vote:
+        #     self.server.reset_timer(self.server.leader_died, self.server.timeout)
 
         reply = {'term': self.server.term, 'voteMe': should_vote}
         return raft_pb2.RequestVoteReply(**reply)
