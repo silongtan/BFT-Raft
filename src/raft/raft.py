@@ -2,8 +2,9 @@ import random
 import time
 import threading
 import logging
+from Crypto.PublicKey import RSA
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 from concurrent import futures
 import sys
 import grpc
@@ -11,16 +12,19 @@ import rpc.raft_pb2 as raft_pb2
 import rpc.raft_pb2_grpc as raft_pb2_grpc
 from rpc.raft_pb2_grpc import RaftServicer
 
-from client_rpc_handler import RoleType, ClientRPCHandler
+# from client_rpc_handler import RoleType, ClientRPCHandler
+from app import Application
 from role_type import RoleType, dispatch
 from random import randrange
 
 from config import *
 
 
+# replica
 class Raft(RaftServicer):
 
-    def __init__(self, port: int, all_address: list, num: int, address: str = "localhost"):
+    def __init__(self, port: int, all_address: list, num: int, public_keys: dict, private_key: RSA.RsaKey,
+                 address: str = "localhost"):
 
         if num != len(all_address):
             raise Exception("num != len(all_address)")
@@ -55,18 +59,15 @@ class Raft(RaftServicer):
         self.timeout = None
         self.reset_timeout()
         self.dead = False
-        self.election_timer = None
+        self.election_timer = None  # leader: heartbeat timer, follower/candidate: election timer
+        # self.lock = threading.Lock()
         # self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        self.init()
+        self.app = Application()
 
-    # timer
-    # self.timer = time.time() + random.randint(2, 7)
-    # self.timeout_thread = None
-    # self.is_leader = False
-    # self.majority = False
-    # self.vote_received = 0
-    # self.last_log_index = 0
-    # self.last_log_term = 0
+        # 拜占庭
+        self.public_keys = public_keys
+        self.private_key = private_key
+        self.init()
 
     @staticmethod
     def get_majority(num):
@@ -75,7 +76,7 @@ class Raft(RaftServicer):
     def init(self):
         # print(self.majority)
 
-        self.election_timer = threading.Timer(HEARTBEAT_INTERVAL_SECONDS, self.leader_died)
+        self.election_timer = threading.Timer(self.timeout, self.leader_died)
         self.election_timer.start()
         # print(self.timeout)
         # self.become(RoleType.FOLLOWER)  # init as follower
@@ -83,7 +84,7 @@ class Raft(RaftServicer):
 
     def AppendEntries(self, request, context):
         # TODO
-        logging.debug(self.address + " received AppendEntries from " + str(request.leaderId))
+        print(self.address + " received AppendEntriesReply from " + str(request.leaderId))
         response = dispatch(self).append_entries(request, context)
         # logging.debug(self.address + " - append entries success: " + str(response.success))
         return response
@@ -101,13 +102,27 @@ class Raft(RaftServicer):
         return response
 
     def NewCommand(self, request, context):
-        return ClientRPCHandler.handle_new_command()
+        if self.role != RoleType.LEADER:
+            return raft_pb2.StatusReport(self.get_status_report())
+        else:
+            self.app.execute(request.command)
+            self.log.append({'term': self.term, 'command': request.command})
+            return raft_pb2.StatusReport(self.get_status_report())
+
+    # helper functions for replica to get status report and send back to client
+    def get_status_report(self):
+        return {'term': self.term, 'committedIndex': self.committed_index,
+                'isLeader': self.role == RoleType.LEADER, 'log': self.log}
 
     def GetStatus(self, request, context):
-        return ClientRPCHandler.handle_get_status()
+        return raft_pb2.StatusReport(self.get_status_report())
 
     def GetCommittedCmd(self, request, context):
-        return ClientRPCHandler.handle_get_committed_cmd()
+        request_index = request.index
+        if self.committed_index >= request_index:
+            return raft_pb2.GetCommittedCmdReply(self.log[request_index])
+        else:
+            return raft_pb2.GetCommittedCmdReply("")
 
     def activate(self):
         pass
@@ -140,15 +155,37 @@ class Raft(RaftServicer):
     def get_last_log_term(self):
         return 0 if len(self.log) == 0 else self.log[-1].term
 
+    # both inclusive
+    def apply_log(self, index: int):
+        for i in range(self.last_applied + 1, index + 1):
+            self.app.execute(self.log[i])
+        self.last_applied = index
 
-def serve():
+
+def serve_one():
     all_port = [5000, 5001, 5002]
     all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
 
     # for p in all_port:
     p = sys.argv[1]
+    # private_key = sys.argv[2]
+    # read private key from file
+    with open(f"keys/private/{p}.pem", "r") as f:
+        private_key = f.read()
+        private_key = RSA.importKey(private_key)
+        print(private_key)
+
+    public_keys = {}
+    for address in all_address:
+        with open(f"keys/public/{address}.pem", "r") as f:
+            public_key = f.read()
+            public_key = RSA.importKey(public_key)
+            public_keys[address] = public_key
+            print(public_key)
+
+    # p = str(port)
     print("Starting server on port: " + p)
-    raft_server = Raft(int(p), all_address, 3)
+    raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
     server.add_insecure_port("localhost:" + p)
@@ -162,4 +199,4 @@ def serve():
 
 
 if __name__ == "__main__":
-    serve()
+    serve_one()

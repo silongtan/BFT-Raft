@@ -36,7 +36,6 @@ message StatusReport{
   int32 committedIndex = 2;
   bool isLeader = 3;
   repeated LogEntry log = 4;
-
 }
 
 message AppendEntriesRequest{
@@ -70,8 +69,8 @@ message GetCommittedCmdRequest{
 }
 
 message GetCommittedCmdReply{
-  //  string command = 1;
-  int32 term = 1; // TODO: what type it should be
+    string command = 1;
+//  int32 term = 1; // TODO: what type it should be
 }
 
 message GetStatusRequest{
