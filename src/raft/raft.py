@@ -155,12 +155,13 @@ class Raft(RaftServicer):
         self.last_applied = index
 
 
-def serve():
-    all_port = [5000, 5001, 5002]
+def serve_one():
+    # all_port = [5000, 5001, 5002]
     all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
 
     # for p in all_port:
     p = sys.argv[1]
+    # p = str(port)
     print("Starting server on port: " + p)
     raft_server = Raft(int(p), all_address, 3)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -175,5 +176,8 @@ def serve():
         print("Server" + raft_server.address + "is shutting down")
 
 
+
+
+
 if __name__ == "__main__":
-    serve()
+    serve_one()

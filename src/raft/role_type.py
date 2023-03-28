@@ -154,7 +154,7 @@ class _Candidate(_Role):
                         randrange(ELECTION_TIMEOUT_MAX_MILLIS // 2, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
                     self.server.reset_timer(self.server.leader_died, self.server.timeout)
         except grpc.RpcError as e:
-            print(e)
+            print("connection error", e)
             logging.error("connection error")
 
     def process_vote(self):
@@ -245,5 +245,5 @@ class _Leader(_Role):
                             self.server.apply_log(self.server.committed_index)
 
         except grpc.RpcError as e:
-            print(e)
+            print("connection error", e)
             logging.error("connection error")
