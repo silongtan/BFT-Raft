@@ -103,11 +103,11 @@ class Raft(RaftServicer):
 
     def NewCommand(self, request, context):
         if self.role != RoleType.LEADER:
-            return raft_pb2.StatusReport(self.get_status_report())
+            return raft_pb2.StatusReport(**self.get_status_report())
         else:
             self.app.execute(request.command)
             self.log.append({'term': self.term, 'command': request.command})
-            return raft_pb2.StatusReport(self.get_status_report())
+            return raft_pb2.StatusReport(**self.get_status_report())
 
     # helper functions for replica to get status report and send back to client
     def get_status_report(self):
@@ -115,14 +115,14 @@ class Raft(RaftServicer):
                 'isLeader': self.role == RoleType.LEADER, 'log': self.log}
 
     def GetStatus(self, request, context):
-        return raft_pb2.StatusReport(self.get_status_report())
+        return raft_pb2.StatusReport(**self.get_status_report())
 
     def GetCommittedCmd(self, request, context):
         request_index = request.index
         if self.committed_index >= request_index:
-            return raft_pb2.GetCommittedCmdReply(self.log[request_index])
+            return raft_pb2.GetCommittedCmdReply(command=self.log[request_index])
         else:
-            return raft_pb2.GetCommittedCmdReply("")
+            return raft_pb2.GetCommittedCmdReply(command="")
 
     def activate(self):
         pass
