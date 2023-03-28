@@ -1,14 +1,36 @@
 import sys
 import unittest
+from multiprocessing import Process, Manager
+
 sys.path.append('../src/raft')
 from raft.raft import *
 from raft.client import *
 
 
+def whatever(magic_list):
+    magic_list.append(1)
+
+
+def create_server(all_port, all_address, port):
+    p = str(port)
+    print("Starting server on port: " + p)
+    raft_server = Raft(int(p), all_address, 3, None, None)
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
+    server.add_insecure_port("localhost:" + p)
+    try:
+        server.start()
+        while True:
+            server.wait_for_termination()
+    except KeyboardInterrupt:
+        server.stop(0)
+        print("Server" + raft_server.address + "is shutting down")
+
+
 class TestRaft(unittest.TestCase):
 
     def test01_initServer(self):
-        raft_server = Raft(5000, ["localhost:5000"], 1)
+        raft_server = Raft(5000, ["localhost:5000"], 1, None, None)
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
         server.add_insecure_port("localhost:5000")
@@ -18,13 +40,12 @@ class TestRaft(unittest.TestCase):
 
     def test02_clientRPC(self):
         try:
-            raft_server = Raft(5000, ["localhost:5000"], 1)
+            raft_server = Raft(5000, ["localhost:5000"], 1, None, None)
             server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
             raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
             server.add_insecure_port("localhost:5000")
             server.start()
-            c = Client(["localhost:5000"])
-            c.send_new_command("test")
+            send_new_command("localhost:5000", "test")
             server.stop(0)
         except Exception as e:
             print(e)
@@ -35,7 +56,7 @@ class TestRaft(unittest.TestCase):
         all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
 
         for p in all_port:
-            raft_server = Raft(p, all_address, 3)
+            raft_server = Raft(p, all_address, 3, None, None)
             server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
             raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
             server.add_insecure_port("localhost:" + str(p))
@@ -44,19 +65,28 @@ class TestRaft(unittest.TestCase):
             server.stop(0)
 
     def test04_leaderElection(self):
+        is_leader = False
+        server_list = []
         all_port = [5000, 5001, 5002]
         all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
-        server_list = []
 
-        for p in all_port:
-            raft_server = Raft(p, all_address, 3)
-            server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-            raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
-            server.add_insecure_port("localhost:" + str(p))
-            server_list.append(server)
-            server.start()
-            self.assertEqual(raft_server.role, RoleType.FOLLOWER)
-            server.stop(0)
+        for port in all_port:
+            p = Process(target=create_server, args=(all_port, all_address, port))
+            p.start()
+            server_list.append(p)
+
+        res = send_get_status("localhost:5000")
+        print(res)
+
+        while is_leader is False:
+            for s in server_list:
+                # print(s.role, s.address)
+                if s.role == RoleType.LEADER:
+                    is_leader = True
+                    break
+
+        self.assertTrue(is_leader)
+
 
 
 if __name__ == '__main__':
