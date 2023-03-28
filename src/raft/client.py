@@ -11,7 +11,7 @@ def send_get_status(addr: str):
         get_status_request = raft_pb2.GetStatusRequest()
         status_reply = stub.GetStatus(get_status_request)
         print(status_reply)
-        # return status_reply
+        return status_reply
 
 
 def send_new_command(addr: str, request: str):
@@ -51,10 +51,6 @@ def send_get_committed_cmd(replica_address: str):
 
 
 if __name__ == '__main__':
-    # client = Client(["localhost:5000"])
-    # client.send_new_command("test")
-    # client.send_get_status()
-    # client.send_get_committed_cmd("localhost:5000")
     with grpc.insecure_channel("localhost:5001") as channel:
         stub = raft_pb2_grpc.RaftStub(channel)
         # get_committed_cmd_request = raft_pb2.GetCommittedCmdRequest()

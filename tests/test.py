@@ -1,5 +1,6 @@
 import sys
 import unittest
+import time
 from multiprocessing import Process, Manager
 
 sys.path.append('../src/raft')
@@ -11,10 +12,15 @@ def whatever(magic_list):
     magic_list.append(1)
 
 
-def create_server(all_port, all_address, port):
+def serve(all_port: list, all_address: list, port: int):
+    # all_port = [5000, 5001, 5002]
+    # all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+    # for p in all_port:
+    # p = sys.argv[1]
     p = str(port)
     print("Starting server on port: " + p)
-    raft_server = Raft(int(p), all_address, 3, None, None)
+    raft_server = Raft(int(p), all_address, 3,None,None)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
     server.add_insecure_port("localhost:" + p)
@@ -66,24 +72,26 @@ class TestRaft(unittest.TestCase):
 
     def test04_leaderElection(self):
         is_leader = False
-        server_list = []
+        raft_nodes = []
         all_port = [5000, 5001, 5002]
         all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
 
         for port in all_port:
-            p = Process(target=create_server, args=(all_port, all_address, port))
+            p = Process(target=serve, args=(all_port, all_address, port))
             p.start()
-            server_list.append(p)
+            raft_nodes.append(p)
 
+        time.sleep(1)
         res = send_get_status("localhost:5000")
         print(res)
 
         while is_leader is False:
-            for s in server_list:
+            for addr in all_address:
                 # print(s.role, s.address)
-                if s.role == RoleType.LEADER:
-                    is_leader = True
-                    break
+                res = send_get_status(addr)
+                print(res.isLeader)
+                is_leader = res.isLeader
+                break
 
         self.assertTrue(is_leader)
 
