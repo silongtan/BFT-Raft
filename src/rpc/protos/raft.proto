@@ -36,7 +36,6 @@ message StatusReport{
   int32 committedIndex = 2;
   bool isLeader = 3;
   repeated LogEntry log = 4;
-
 }
 
 message AppendEntriesRequest{

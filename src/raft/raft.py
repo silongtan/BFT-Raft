@@ -2,8 +2,9 @@ import random
 import time
 import threading
 import logging
+from Crypto.PublicKey import RSA
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 from concurrent import futures
 import sys
 import grpc
@@ -22,7 +23,8 @@ from config import *
 # replica
 class Raft(RaftServicer):
 
-    def __init__(self, port: int, all_address: list, num: int, address: str = "localhost"):
+    def __init__(self, port: int, all_address: list, num: int, public_keys: dict, private_key: RSA.RsaKey,
+                 address: str = "localhost"):
 
         if num != len(all_address):
             raise Exception("num != len(all_address)")
@@ -61,6 +63,10 @@ class Raft(RaftServicer):
         # self.lock = threading.Lock()
         # self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         self.app = Application()
+
+        # 拜占庭
+        self.public_keys = public_keys
+        self.private_key = private_key
         self.init()
 
     @staticmethod
@@ -103,6 +109,7 @@ class Raft(RaftServicer):
             self.log.append({'term': self.term, 'command': request.command})
             return raft_pb2.StatusReport(self.get_status_report())
 
+    # helper functions for replica to get status report and send back to client
     def get_status_report(self):
         return {'term': self.term, 'committedIndex': self.committed_index,
                 'isLeader': self.role == RoleType.LEADER, 'log': self.log}
@@ -156,14 +163,29 @@ class Raft(RaftServicer):
 
 
 def serve_one():
-    # all_port = [5000, 5001, 5002]
+    all_port = [5000, 5001, 5002]
     all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
 
     # for p in all_port:
     p = sys.argv[1]
+    # private_key = sys.argv[2]
+    # read private key from file
+    with open(f"keys/private/{p}.pem", "r") as f:
+        private_key = f.read()
+        private_key = RSA.importKey(private_key)
+        print(private_key)
+
+    public_keys = {}
+    for address in all_address:
+        with open(f"keys/public/{address}.pem", "r") as f:
+            public_key = f.read()
+            public_key = RSA.importKey(public_key)
+            public_keys[address] = public_key
+            print(public_key)
+
     # p = str(port)
     print("Starting server on port: " + p)
-    raft_server = Raft(int(p), all_address, 3)
+    raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
     server.add_insecure_port("localhost:" + p)
@@ -174,9 +196,6 @@ def serve_one():
     except KeyboardInterrupt:
         server.stop(0)
         print("Server" + raft_server.address + "is shutting down")
-
-
-
 
 
 if __name__ == "__main__":

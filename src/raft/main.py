@@ -54,5 +54,23 @@ def serve(all_port: list, all_address: list, port: int):
         server.stop(0)
         print("Server" + raft_server.address + "is shutting down")
 
+def generate_key_pairs(num:int):
+    random_generator = Random.new().read
+    private_keys = [RSA.generate(1024, random_generator) for _ in range(num + 1)]
+
+    port = 5000
+    for key in private_keys:
+        print("generating")
+
+        file_out = open(f"keys/private/{port}.pem", "wb")
+        file_out.write(key.export_key())
+        file_out.close()
+
+        file_out = open(f"keys/public/localhost:{port}.pem", "wb")
+        file_out.write(key.publickey().export_key())
+        file_out.close()
+        port += 1
+
 if __name__ == '__main__':
-    main()
+    # main()
+    generate_key_pairs(3)
