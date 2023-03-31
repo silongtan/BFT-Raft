@@ -60,6 +60,13 @@ class _Role:
             # print("never reach!!!!!!!!!")
             return raft_pb2.AppendEntriesReply(**reply)
 
+        print(leader_id, self.server.vote_for)
+        # if leader_id != self.server.vote_for:
+        #     print('hhhhhhhhhhhh')
+        #     reply = {"term": self.server.term, "success": False}
+        #     # print("never reach!!!!!!!!!")
+        #     return raft_pb2.AppendEntriesReply(**reply)
+
         # check integrity
         for vote in request.signedVote:
             vote_from = vote.voteFrom
@@ -85,6 +92,7 @@ class _Role:
                     self.server.role)
                 self.server.become(RoleType.FOLLOWER)
             else:
+                print("this is still follower")
                 self.server.reset_timer(self.server.leader_died, self.server.timeout)
 
             if prev_log_index == -1:
@@ -107,6 +115,7 @@ class _Role:
 class _Follower(_Role):
     def run(self):
         # print('test')f
+
         self.server.vote_for = -1
         self.server.votes_granted = 0
         self.server.signed_votes = []
@@ -179,7 +188,7 @@ class _Candidate(_Role):
 
     # TODO: barrier
     def ask_vote(self, address: str, barrier: threading.Barrier):
-        print(self.server.address,'ask vote', address)
+        print(self.server.address, 'ask vote', address)
         try:
             with grpc.insecure_channel(address) as channel:
                 stub = raft_pb2_grpc.RaftStub(channel)
@@ -207,12 +216,12 @@ class _Candidate(_Role):
             logging.error("connection error")
 
     def process_vote(self):
-        print(self.server.address,"process vote, votes_granted", self.server.votes_granted, self.server.address)
+        print(self.server.address, "process vote, votes_granted", self.server.votes_granted, self.server.address)
         if self.server.votes_granted >= self.server.majority:
             # logging.info("become leader")
             self.server.become(RoleType.LEADER)
         else:
-            print(self.server.address,"process vote fail, become follower")
+            print(self.server.address, "process vote fail, become follower")
             self.server.become(RoleType.CANDIDATE)
 
     # def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
@@ -236,7 +245,7 @@ class _Candidate(_Role):
 
 class _Leader(_Role):
     def run(self):
-        print(self.server.address,"I am leader leading in term:", self.server.term)
+        print(self.server.address, "I am leader leading in term:", self.server.term)
         self.server.next_index = {key: len(self.server.log) for key in self.server.peers}
         self.server.match_index = {key: -1 for key in self.server.peers}
 
@@ -245,15 +254,15 @@ class _Leader(_Role):
 
     def broadcast_append_entries(self):
         # TODO: multi-thread
-
+        self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
         for value in self.server.peers:
             self.send_append_entries(value)
-        self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
+
 
     def send_append_entries(self, address: str):
-        with self.server.lock:
-            print(self.server.address, "broadcast append entries to ", address)
-            current_role = self.server.role
+        # with self.server.lock:
+        #     print(self.server.address, "broadcast append entries to ", address)
+        current_role = self.server.role
         if current_role != RoleType.LEADER:
             return
         try:
@@ -285,7 +294,8 @@ class _Leader(_Role):
                 # print("request.signedVote", request.signedVote)
                 response = stub.AppendEntries(request)
                 if response.term > self.server.term:
-                    print(self.server.address,"will become follower, other is in term: ", response.term, "I am in term: ", self.server.term)
+                    print(self.server.address, "will become follower, other is in term: ", response.term,
+                          "I am in term: ", self.server.term)
                     self.server.term = response.term
                     self.server.become(RoleType.FOLLOWER)
                     return
