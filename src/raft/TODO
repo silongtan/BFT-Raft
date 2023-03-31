@@ -6,3 +6,8 @@
 6. 如何让server挂掉 stop？
 7. app execute security issue
 8. 拜占庭问题
+
+
+
+TODO:
+1. send vote 需要等leader真的死了才能发

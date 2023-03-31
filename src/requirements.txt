@@ -1,3 +1,5 @@
 grpcio
 grpcio-tools
-pycryptodome
+# grpcio and grpcio-tools packages are not required in runtime, grpcio-tools package will be used only during code generation
+# pycryptodome
+rsa

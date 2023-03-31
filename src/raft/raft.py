@@ -2,15 +2,21 @@ import random
 import time
 import threading
 import logging
-from Crypto.PublicKey import RSA
 
 # logging.basicConfig(level=logging.DEBUG)
 from concurrent import futures
 import sys
 import grpc
-import rpc.raft_pb2 as raft_pb2
-import rpc.raft_pb2_grpc as raft_pb2_grpc
-from rpc.raft_pb2_grpc import RaftServicer
+import rsa
+
+# import rpc.raft_pb2 as raft_pb2
+# import rpc.raft_pb2_grpc as raft_pb2_grpc
+# from rpc.raft_pb2_grpc import RaftServicer
+
+
+import rpc.bft_raft_pb2 as raft_pb2
+import rpc.bft_raft_pb2_grpc as raft_pb2_grpc
+from rpc.bft_raft_pb2_grpc import RaftServicer
 
 # from client_rpc_handler import RoleType, ClientRPCHandler
 from app import Application
@@ -23,7 +29,7 @@ from config import *
 # replica
 class Raft(RaftServicer):
 
-    def __init__(self, port: int, all_address: list, num: int, public_keys: dict, private_key: RSA.RsaKey,
+    def __init__(self, port: int, all_address: list, num: int, public_keys: dict, private_key,
                  address: str = "localhost"):
 
         if num != len(all_address):
@@ -67,6 +73,9 @@ class Raft(RaftServicer):
         # 拜占庭
         self.public_keys = public_keys
         self.private_key = private_key
+        self.signed_votes = []
+        self.lock = threading.Lock()
+        self.isLeaderDead = True
         self.init()
 
     @staticmethod
@@ -78,7 +87,7 @@ class Raft(RaftServicer):
 
         self.election_timer = threading.Timer(self.timeout, self.leader_died)
         self.election_timer.start()
-        # print(self.timeout)
+        print(self.timeout)
         # self.become(RoleType.FOLLOWER)  # init as follower
         # print(self.timeout)
 
@@ -87,6 +96,7 @@ class Raft(RaftServicer):
         print(self.address + " received AppendEntriesReply from " + str(request.leaderId))
         response = dispatch(self).append_entries(request, context)
         # logging.debug(self.address + " - append entries success: " + str(response.success))
+        # print(request)
         return response
         # test
         # print("recieved append entries heartbeat")
@@ -102,20 +112,28 @@ class Raft(RaftServicer):
         return response
 
     def NewCommand(self, request, context):
-        if self.role != RoleType.LEADER:
-            return raft_pb2.StatusReport(**self.get_status_report())
-        else:
-            self.app.execute(request.command)
-            self.log.append({'term': self.term, 'command': request.command})
-            return raft_pb2.StatusReport(**self.get_status_report())
+        with self.lock:
+            if self.role != RoleType.LEADER:
+                return self.get_status_report()
+            else:
+                self.app.execute(request.command)
+                self.log.append({'term': self.term, 'command': request.command})
+                return self.get_status_report()
 
     # helper functions for replica to get status report and send back to client
-    def get_status_report(self):
-        return {'term': self.term, 'committedIndex': self.committed_index,
-                'isLeader': self.role == RoleType.LEADER, 'log': self.log}
+    def get_status_report(self) -> raft_pb2.StatusReport:
+        args = {'term': self.term, 'committedIndex': self.committed_index,
+                'isLeader': self.role == RoleType.LEADER}
+        report = raft_pb2.StatusReport(**args)
+        report.log.extend(self.log)
+        return report
 
     def GetStatus(self, request, context):
-        return raft_pb2.StatusReport(**self.get_status_report())
+        # print('test')
+        # print(self.get_status_report())
+        return self.get_status_report()
+        # print(report)
+        # return report
 
     def GetCommittedCmd(self, request, context):
         request_index = request.index
@@ -132,7 +150,9 @@ class Raft(RaftServicer):
 
     def become(self, role: RoleType):
         logging.debug("become " + str(role) + ", current term: " + str(self.term))
-        self.role = role
+        self.isLeaderDead = False
+        with self.lock:
+            self.role = role
         dispatch(self).run()
 
     def reset_timer(self, function, timeout: int):
@@ -141,12 +161,14 @@ class Raft(RaftServicer):
         self.election_timer.start()
 
     def reset_timeout(self):
-        self.timeout = float(randrange(ELECTION_TIMEOUT_MAX_MILLIS // 2, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
+        self.timeout = float(randrange(0 , ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
 
     def leader_died(self):
-        if self.role != RoleType.FOLLOWER:
-            return
+        with self.lock:
+            if self.role != RoleType.FOLLOWER:
+                return
         logging.debug("leader died")
+        self.isLeaderDead = True
         self.become(RoleType.CANDIDATE)
 
     def get_last_log_index(self):
@@ -161,6 +183,33 @@ class Raft(RaftServicer):
             self.app.execute(self.log[i])
         self.last_applied = index
 
+    def sign_msg(self, msg):
+        return rsa.sign(msg.encode(), self.private_key, 'SHA-256')
+
+    # @staticmethod
+    # msg is plain text, verify AE valid
+    def verify_msg(self, term, leader_id, vote_from, vote_for, signature) -> bool:
+        # print("checking " + "localhost:"+str(leader_id), str(vote_for))
+
+        if "localhost:" + str(leader_id) != str(vote_for):
+            # print('not equal')
+            return False
+        msg = str(term) + " " + str(leader_id) + " " + str(vote_from) + " " + str(vote_for)
+        # print('sign',msg)
+        public_key = self.public_keys[vote_from]
+        try:
+            rsa.verify(msg.encode(), signature, public_key)
+            return True
+        except rsa.VerificationError:
+            return False
+        # if rsa.verify(msg.encode(), signature, public_key):
+        #     return True
+        # else:
+        #     return False
+
+    # def decode_msg(self, encrypted_msg):
+    #     return rsa.decrypt(encrypted_msg, self.private_key).decode()
+
 
 def serve_one():
     all_port = [5000, 5001, 5002]
@@ -170,18 +219,20 @@ def serve_one():
     p = sys.argv[1]
     # private_key = sys.argv[2]
     # read private key from file
-    with open(f"keys/private/{p}.pem", "r") as f:
-        private_key = f.read()
-        private_key = RSA.importKey(private_key)
-        print(private_key)
+    with open(f"keys/private/localhost:{p}.pem", "r") as f:
+        # private_key = f.read()
+        # private_key = RSA.importKey(private_key)
+        private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+        # print(private_key)
 
     public_keys = {}
     for address in all_address:
         with open(f"keys/public/{address}.pem", "r") as f:
-            public_key = f.read()
-            public_key = RSA.importKey(public_key)
+            # public_key = f.read()
+            # public_key = RSA.importKey(public_key)
+            public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
             public_keys[address] = public_key
-            print(public_key)
+            # print(public_key)
 
     # p = str(port)
     print("Starting server on port: " + p)
@@ -190,6 +241,54 @@ def serve_one():
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
     server.add_insecure_port("localhost:" + p)
     try:
+        # print(bytes(True))
+        # print(bytes(False))
+        ## encryption test
+        # encrypted_msg = rsa.encrypt(bytes(True), public_keys["localhost:5000"])
+        # # print(encrypted_msg)
+        # # print(raft_server.public_keys)
+        # clear_msg = rsa.decrypt(encrypted_msg, private_key)
+        # print(clear_msg.decode())
+        # encrypted_msg = rsa.encrypt("hello world".encode(), public_keys["localhost:5000"])
+        # # print(encrypted_msg)
+        # # print(raft_server.public_keys)
+        # clear_msg = rsa.decrypt(encrypted_msg, private_key)
+        # print(clear_msg.decode())
+
+        # msg = str(1) + " " + str(5000) + " " + raft_server.address + " localhost:" + str(
+        #     5000)
+        # print('origin',msg)
+        # # signature test
+        # signature = rsa.sign(msg.encode(), private_key, "SHA-256")
+        #
+        # print(raft_server.verify_msg(1, 5000, "localhost:5000", "localhost:5000", signature))
+        # print(not rsa.verify("hello dworld".encode(), signature, public_keys["localhost:5000"]))
+        # print(rsa.verify("hello  world".encode(), signature, public_keys["localhost:5000"]))
+
+        # recipient_key = raft_server.public_keys["localhost:5000"]
+        # print(recipient_key)
+        # session_key = get_random_bytes(16)
+        #
+        # # Encrypt the session key with the public RSA key
+        # cipher_rsa = PKCS1_OAEP.new(recipient_key)
+        # enc_session_key = cipher_rsa.encrypt(session_key)
+        #
+        # # Encrypt the data with the AES session key
+        # cipher_aes = AES.new(session_key, AES.MODE_EAX)
+        # ciphertext, tag = cipher_aes.encrypt_and_digest("hello world".encode("utf-8"))
+        # test = [x for x in (enc_session_key, cipher_aes.nonce, tag, ciphertext)]
+        #
+        # private_key = raft_server.private_key
+        # enc_session_key, nonce, tag, ciphertext = [x for x in (private_key.size_in_bytes(), 16, 16, -1)]
+        # # Decrypt the session key with the private RSA key
+        # cipher_rsa = PKCS1_OAEP.new(private_key)
+        # session_key = cipher_rsa.decrypt(bytes(enc_session_key))
+
+        # Decrypt the data with the AES session key
+        # cipher_aes = AES.new(session_key, AES.MODE_EAX, nonce)
+        # data = cipher_aes.decrypt_and_verify(ciphertext, tag)
+        # print(data.decode("utf-8"))
+        ###
         server.start()
         while True:
             server.wait_for_termination()

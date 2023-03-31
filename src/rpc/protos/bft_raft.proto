@@ -16,12 +16,27 @@ service Raft {
   // for test only
   rpc GetCommittedCmd (GetCommittedCmdRequest) returns (GetCommittedCmdReply);
 
+  // client intervention
+//  rpc Restart (RestartRequest) returns (StatusReport);
+
   // for test only
   rpc GetStatus (GetStatusRequest) returns (StatusReport);
 
   // send a new command to the Raft peer, mutate state
   rpc NewCommand (NewCommandRequest) returns (StatusReport);
 }
+
+message RestartRequest{
+
+}
+
+//message RestartReply
+//message RestartReply{
+//  int32 term = 1;
+//  int32 committedIndex = 2;
+//  bool isLeader = 3;
+//  repeated LogEntry log = 4;
+//}
 
 
 message LogEntry {
@@ -45,6 +60,7 @@ message AppendEntriesRequest{
   int32 prevLogTerm = 4;
   repeated LogEntry entries = 5;
   int32 leaderCommitIndex = 6;
+  repeated RequestVoteReply signedVote = 7;
 }
 
 message AppendEntriesReply{
@@ -62,7 +78,9 @@ message RequestVoteRequest{
 message RequestVoteReply{
   int32 term = 1;
   bool voteMe = 2;
-
+  bytes signature = 3; // verify if the reply is from 'from' location
+  string voteFrom = 4;
+  string voteFor = 5;
 }
 
 message GetCommittedCmdRequest{
@@ -70,8 +88,8 @@ message GetCommittedCmdRequest{
 }
 
 message GetCommittedCmdReply{
-    string command = 1;
-//  int32 term = 1; // TODO: what type it should be
+  string command = 1;
+  //  int32 term = 1; // TODO: what type it should be
 }
 
 message GetStatusRequest{
