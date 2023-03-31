@@ -163,7 +163,7 @@ class Raft(RaftServicer):
         self.election_timer.start()
 
     def reset_timeout(self):
-        self.timeout = float(randrange(0, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
+        self.timeout = float(randrange(ELECTION_TIMEOUT_MAX_MILLIS / 2, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
 
     def leader_died(self):
         with self.lock:
