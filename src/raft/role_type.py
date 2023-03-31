@@ -36,7 +36,7 @@ class _Role:
 
     # handle receive
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
-        # self.server.reset_timer(self.server.leader_died, self.server.timeout)
+        self.server.reset_timer(self.server.leader_died, self.server.timeout)
         reply = {'term': self.server.term, 'voteMe': False}
         return raft_pb2.RequestVoteReply(**reply)
 
@@ -259,9 +259,9 @@ class _Leader(_Role):
             self.send_append_entries(value)
 
     def send_append_entries(self, address: str):
-        # with self.server.lock:
-        #     print(self.server.address, "broadcast append entries to ", address)
-        current_role = self.server.role
+        with self.server.lock:
+                # print(self.server.address, "broadcast append entries to ", address)
+            current_role = self.server.role
         if current_role != RoleType.LEADER:
             return
         try:

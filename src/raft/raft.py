@@ -108,7 +108,7 @@ class Raft(RaftServicer):
     def RequestVote(self, request, context):
         logging.debug(self.address + " received RequestVote from " + str(request.candidateId))
         response = dispatch(self).vote(request, context)
-        logging.debug(self.address + " - vote granted: " + str(response.voteMe))
+        logging.debug(self.address + " vote to: " + str(response.voteFor) + " " + str(response.voteMe))
         return response
 
     def NewCommand(self, request, context):
