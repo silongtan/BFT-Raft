@@ -201,8 +201,10 @@ class Raft(RaftServicer):
         public_key = self.public_keys[vote_from]
         try:
             rsa.verify(msg.encode(), signature, public_key)
+            # print(True)
             return True
         except rsa.VerificationError:
+            # print(False)
             return False
         # if rsa.verify(msg.encode(), signature, public_key):
         #     return True

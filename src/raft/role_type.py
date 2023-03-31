@@ -73,6 +73,7 @@ class _Role:
             vote_for = vote.voteFor
             signature = vote.signature
             if not self.server.verify_msg(leader_term, leader_id, vote_from, vote_for, signature):
+                raise Exception("invalid signature")
                 reply = {"term": self.server.term, "success": False}
                 print("never reach!!!!!!!!!")
                 return raft_pb2.AppendEntriesReply(**reply)
@@ -184,8 +185,6 @@ class _Candidate(_Role):
             self.ask_vote(value, barrier)
             # threading.Thread(target=self.ask_vote,args=(value,barrier)).start()
         # self.server.reset_timer(self.process_vote, self.server.timeout)
-
-
 
     # TODO: barrier
     def ask_vote(self, address: str, barrier: threading.Barrier):

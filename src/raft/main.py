@@ -89,9 +89,10 @@ def serve(all_port: list, all_address: list, port: int):
 #         file_out.close()
 #         port += 1
 def generate_key_pairs(num: int):
-    public_key, private_key = rsa.newkeys(1024)
+
     port = 5000
     for _ in range(num):
+        public_key, private_key = rsa.newkeys(1024)
         with open(f"keys/private/localhost:{port}.pem", "wb") as f:
             f.write(private_key.save_pkcs1("PEM"))
 
@@ -102,6 +103,6 @@ def generate_key_pairs(num: int):
 
 if __name__ == '__main__':
     # main()
-    # generate_key_pairs(4)
-    for _ in range(10):
-        print(float(random.randrange(0 , ELECTION_TIMEOUT_MAX_MILLIS) / 1000))
+    generate_key_pairs(4)
+    # for _ in range(10):
+    #     print(float(random.randrange(0 , ELECTION_TIMEOUT_MAX_MILLIS) / 1000))
