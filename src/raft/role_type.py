@@ -179,12 +179,13 @@ class _Candidate(_Role):
 
         # barrier = threading.Barrier(self.server.majority - 1, timeout=self.server.timeout)
         barrier = None
+        self.server.reset_timer(self.process_vote, self.server.timeout)
         for value in self.server.peers:
             self.ask_vote(value, barrier)
             # threading.Thread(target=self.ask_vote,args=(value,barrier)).start()
         # self.server.reset_timer(self.process_vote, self.server.timeout)
 
-        self.server.reset_timer(self.process_vote, self.server.timeout)
+
 
     # TODO: barrier
     def ask_vote(self, address: str, barrier: threading.Barrier):
