@@ -203,6 +203,9 @@ class _Candidate(_Role):
                     self.server.votes_granted += 1
                     # print('append', response)
                     self.server.signed_votes.append(response)
+                    if self.server.votes_granted >= self.server.majority:
+                        self.server.become(RoleType.LEADER)
+
                 if response.term > self.server.term:
                     self.server.term = response.term
                     self.server.become(RoleType.FOLLOWER)
