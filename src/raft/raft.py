@@ -151,7 +151,7 @@ class Raft(RaftServicer):
         pass
 
     def become(self, role: RoleType):
-        logging.debug("become " + str(role) + ", current term: " + str(self.term))
+        logging.debug(self.address + " become " + str(role) + ", prev term: " + str(self.term))
         self.isLeaderDead = False
         with self.lock:
             self.role = role
@@ -163,13 +163,13 @@ class Raft(RaftServicer):
         self.election_timer.start()
 
     def reset_timeout(self):
-        self.timeout = float(randrange(0 , ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
+        self.timeout = float(randrange(0, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
 
     def leader_died(self):
         with self.lock:
             if self.role != RoleType.FOLLOWER:
                 return
-        logging.debug("leader died")
+        logging.debug(self.address + " leader died")
         self.isLeaderDead = True
         self.become(RoleType.CANDIDATE)
 
