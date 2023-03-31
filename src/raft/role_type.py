@@ -60,7 +60,7 @@ class _Role:
             # print("never reach!!!!!!!!!")
             return raft_pb2.AppendEntriesReply(**reply)
 
-        print(leader_id, self.server.vote_for)
+        # print(leader_id, self.server.vote_for)
         # if leader_id != self.server.vote_for:
         #     print('hhhhhhhhhhhh')
         #     reply = {"term": self.server.term, "success": False}
@@ -87,12 +87,12 @@ class _Role:
                 current_role = self.server.role
 
             if current_role != RoleType.FOLLOWER:
-                print(
-                    "this is because leader send append entries to cause this server become follower, previous role type is: ",
-                    self.server.role)
+                print(self.server.address,
+                      "this is because leader send append entries to cause this server become follower, previous role type is: ",
+                      self.server.role)
                 self.server.become(RoleType.FOLLOWER)
             else:
-                print("this is still follower")
+                print(self.server.address, " this is still follower")
                 self.server.reset_timer(self.server.leader_died, self.server.timeout)
 
             if prev_log_index == -1:
@@ -257,7 +257,6 @@ class _Leader(_Role):
         self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
         for value in self.server.peers:
             self.send_append_entries(value)
-
 
     def send_append_entries(self, address: str):
         # with self.server.lock:
