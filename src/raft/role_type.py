@@ -52,8 +52,8 @@ class _Role:
         leader_commit_index = request.leaderCommitIndex
         success = False
 
-        print(len(request.signedVote) + 1)
-        print(self.server.majority)
+        # print(len(request.signedVote) + 1)
+        # print(self.server.majority)
         if len(request.signedVote) + 1 < self.server.majority:
             # print("request.signedVote:::", len(request.signedVote))
             reply = {"term": self.server.term, "success": False}
@@ -179,7 +179,7 @@ class _Candidate(_Role):
 
     # TODO: barrier
     def ask_vote(self, address: str, barrier: threading.Barrier):
-        print('ask vote', address)
+        print(self.server.address,'ask vote', address)
         try:
             with grpc.insecure_channel(address) as channel:
                 stub = raft_pb2_grpc.RaftStub(channel)
@@ -207,12 +207,12 @@ class _Candidate(_Role):
             logging.error("connection error")
 
     def process_vote(self):
-        print("process vote, votes_granted", self.server.votes_granted)
+        print(self.server.address,"process vote, votes_granted", self.server.votes_granted, self.server.address)
         if self.server.votes_granted >= self.server.majority:
             # logging.info("become leader")
             self.server.become(RoleType.LEADER)
         else:
-            print("process vote fail, become follower")
+            print(self.server.address,"process vote fail, become follower")
             self.server.become(RoleType.CANDIDATE)
 
     # def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
@@ -236,7 +236,7 @@ class _Candidate(_Role):
 
 class _Leader(_Role):
     def run(self):
-        print("I am leader leading in term:", self.server.term)
+        print(self.server.address,"I am leader leading in term:", self.server.term)
         self.server.next_index = {key: len(self.server.log) for key in self.server.peers}
         self.server.match_index = {key: -1 for key in self.server.peers}
 
@@ -245,13 +245,14 @@ class _Leader(_Role):
 
     def broadcast_append_entries(self):
         # TODO: multi-thread
-        print("broadcast append entries")
+
         for value in self.server.peers:
             self.send_append_entries(value)
         self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
 
     def send_append_entries(self, address: str):
         with self.server.lock:
+            print(self.server.address, "broadcast append entries to ", address)
             current_role = self.server.role
         if current_role != RoleType.LEADER:
             return
@@ -278,13 +279,13 @@ class _Leader(_Role):
                                       "with args", args, "to", address)
                     else:
                         logging.debug(str(self.server.id) + " send heartbeat to" + address)
-                print('signedVote', self.server.signed_votes)
+                # print(self.server.address,'signedVote', self.server.signed_votes)
                 request = raft_pb2.AppendEntriesRequest(**args)
                 request.signedVote.extend(self.server.signed_votes)
                 # print("request.signedVote", request.signedVote)
                 response = stub.AppendEntries(request)
                 if response.term > self.server.term:
-                    print("will become follower, other is in term: ", response.term, "I am in term: ", self.server.term)
+                    print(self.server.address,"will become follower, other is in term: ", response.term, "I am in term: ", self.server.term)
                     self.server.term = response.term
                     self.server.become(RoleType.FOLLOWER)
                     return

@@ -124,6 +124,8 @@ class Raft(RaftServicer):
     def get_status_report(self) -> raft_pb2.StatusReport:
         args = {'term': self.term, 'committedIndex': self.committed_index,
                 'isLeader': self.role == RoleType.LEADER}
+        # print('get_status_report')
+        # print(self.role == RoleType.LEADER)
         report = raft_pb2.StatusReport(**args)
         report.log.extend(self.log)
         return report
