@@ -274,7 +274,9 @@ def serve_one():
             # print(public_key)
 
     private_key_path = "credentials/localhost:" + p + ".key"
+    print(private_key_path)
     cert_chain_path = "credentials/localhost:" + p + ".crt"
+    print(cert_chain_path)
     private_key = _credentials._load_credential_from_file(private_key_path)
     cert_chain = _credentials._load_credential_from_file(cert_chain_path)
 
