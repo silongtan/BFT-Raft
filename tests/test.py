@@ -221,12 +221,13 @@ class TestRaft(unittest.TestCase):
             p = Process(target=serve, args=(all_address, port, public_keys, private_key))
             p.start()
             raft_nodes.append(p)
-
+        time.sleep(10)
+        print("sad")
         for i in range(10):
             command = "add key" + str(i) + " " + str(i)
+            print(command)
             send_new_command(all_address[0], command)
 
-        time.sleep(10)
         all_logs = []
         for addr in all_address:
             res = send_get_status(addr)
@@ -234,8 +235,12 @@ class TestRaft(unittest.TestCase):
 
         print(all_logs[0])
 
-        for p in raft_nodes:
-            p.terminate()
+        try:
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
 
 
 if __name__ == '__main__':
