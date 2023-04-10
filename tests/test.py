@@ -85,7 +85,8 @@ class TestRaft(unittest.TestCase):
         res = send_get_status("localhost:5000")
         print(res)
 
-        while is_leader is False:
+        for i in range(10):
+            time.sleep(1)
             for addr in all_address:
                 # print(s.role, s.address)
                 res = send_get_status(addr)
@@ -94,6 +95,34 @@ class TestRaft(unittest.TestCase):
                 break
 
         self.assertTrue(is_leader)
+
+    def test05_duplicatedLeader(self):
+        max_leader_count = 0
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        for port in all_port:
+            p = Process(target=serve, args=(all_port, all_address, port))
+            p.start()
+            raft_nodes.append(p)
+
+        time.sleep(1)
+
+        for i in range(10):
+            time.sleep(1)
+            temp_count = 0
+            for addr in all_address:
+                res = send_get_status(addr)
+                if res.isLeader:
+                    temp_count += 1
+            max_leader_count = max(temp_count, max_leader_count)
+
+        self.assertTrue(max_leader_count == 1)
+
+
+
+
 
 
 
