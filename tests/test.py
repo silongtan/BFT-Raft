@@ -84,16 +84,28 @@ class TestRaft(unittest.TestCase):
             p.start()
             raft_nodes.append(p)
 
-        time.sleep(10)
+        # time.sleep(10)
+        #
+        # while is_leader is False:
+        #     for addr in all_address:
+        #         res = send_get_status(addr)
+        #         print(addr, res)
+        #         is_leader = res.isLeader
+        #         if is_leader:
+        #             break
+        #         time.sleep(3)
 
-        while is_leader is False:
+        for i in range(10):
+            time.sleep(1)
             for addr in all_address:
+                # print(s.role, s.address)
                 res = send_get_status(addr)
                 print(addr, res)
                 is_leader = res.isLeader
                 if is_leader:
                     break
-                time.sleep(3)
+            if is_leader:
+                break
 
         try:
             self.assertTrue(is_leader)
@@ -153,6 +165,8 @@ class TestRaft(unittest.TestCase):
         except KeyboardInterrupt:
             for p in raft_nodes:
                 p.terminate()
+
+
 
 
 if __name__ == '__main__':
