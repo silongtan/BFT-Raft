@@ -277,8 +277,10 @@ def serve_one():
     print(private_key_path)
     cert_chain_path = "credentials/localhost:" + p + ".crt"
     print(cert_chain_path)
+    root_ca_path = "credentials/root.crt"
     private_key = _credentials._load_credential_from_file(private_key_path)
     cert_chain = _credentials._load_credential_from_file(cert_chain_path)
+    root_ca = _credentials._load_credential_from_file(root_ca_path)
 
     # p = str(port)
     print("Starting server on port: " + p)
@@ -289,10 +291,7 @@ def serve_one():
     # server.add_insecure_port("localhost:" + p)
 
     # load credentials
-    server_credentials = grpc.ssl_server_credentials(((
-        private_key,
-        cert_chain,
-    ),))
+    server_credentials = grpc.ssl_server_credentials(((private_key,cert_chain),), root_certificates=root_ca, require_client_auth=True)
 
     # pass down the credentials to the server
     port = server.add_secure_port("localhost:" + p,
