@@ -168,16 +168,6 @@ class TestRaft(unittest.TestCase):
 
     def test06_duplicatedLeader(self):
         max_leader_count = 0
-        # raft_nodes = []
-        # all_port = [5000, 5001, 5002]
-        # all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
-        #
-        # for port in all_port:
-        #     p = Process(target=serve, args=(all_port, all_address, port))
-        #     p.start()
-        #     raft_nodes.append(p)
-
-        is_leader = False
         raft_nodes = []
         all_port = [5000, 5001, 5002]
         all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
