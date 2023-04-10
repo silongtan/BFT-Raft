@@ -10,6 +10,7 @@ import grpc
 import rsa
 from grpc import aio
 import asyncio
+import _credentials
 # import rpc.raft_pb2 as raft_pb2
 # import rpc.raft_pb2_grpc as raft_pb2_grpc
 # from rpc.raft_pb2_grpc import RaftServicer
@@ -272,13 +273,29 @@ def serve_one():
             public_keys[address] = public_key
             # print(public_key)
 
+    private_key_path = "credentials/localhost:" + p + ".key"
+    cert_chain_path = "credentials/localhost:" + p + ".crt"
+    private_key = _credentials._load_credential_from_file(private_key_path)
+    cert_chain = _credentials._load_credential_from_file(cert_chain_path)
+
     # p = str(port)
     print("Starting server on port: " + p)
     raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     # server = aio.server()
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
-    server.add_insecure_port("localhost:" + p)
+    # server.add_insecure_port("localhost:" + p)
+
+    # load credentials
+    server_credentials = grpc.ssl_server_credentials(((
+        private_key,
+        cert_chain,
+    ),))
+
+    # pass down the credentials to the server
+    port = server.add_secure_port("localhost:" + p,
+                                  server_credentials)
+
     try:
         # print(bytes(True))
         # print(bytes(False))
