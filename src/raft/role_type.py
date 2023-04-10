@@ -131,6 +131,9 @@ class _Follower(_Role):
         # self.server.reset_timer(lambda: print("reachingiiiiiiiii"), self.server.timeout)
 
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
+        if self.server.active is False:
+            print(self.server.address, "follower is not active and can't append vote")
+            return
         should_vote = False
         candidate_id = request.candidateId
         candidate_term = request.term
@@ -194,6 +197,9 @@ class _Candidate(_Role):
 
     # TODO: barrier
     def ask_vote(self, address: str, barrier: threading.Barrier):
+        if self.server.active is False:
+            print(self.server.address, "candidate is not active and can't ask entries")
+            return
         print(self.server.address, 'ask vote', address)
         try:
             with grpc.insecure_channel(address) as channel:
@@ -225,6 +231,9 @@ class _Candidate(_Role):
             logging.error("connection error")
 
     def process_vote(self):
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't process vote")
+            return
         print(self.server.address, "process vote, votes_granted", self.server.votes_granted, self.server.address)
         if self.server.votes_granted >= self.server.majority:
             # logging.info("become leader")
@@ -255,7 +264,7 @@ class _Candidate(_Role):
 class _Leader(_Role):
     def run(self):
         if self.server.active is False:
-            print(self.server.address, "replica is not active and can't run")
+            print(self.server.address, "leader is not active and can't run")
             return
         print(self.server.address, "I am leader leading in term:", self.server.term)
         self.server.next_index = {key: len(self.server.log) for key in self.server.peers}
@@ -267,7 +276,7 @@ class _Leader(_Role):
     def broadcast_append_entries(self):
         # TODO: multi-thread
         if self.server.active is False:
-            print(self.server.address, "replica is not active and can't broadcast append entries")
+            print(self.server.address, "leader is not active and can't broadcast append entries")
             return
         self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
         for value in self.server.peers:
@@ -275,7 +284,7 @@ class _Leader(_Role):
 
     def send_append_entries(self, address: str):
         if self.server.active is False:
-            print(self.server.address, "replica is not active and can't send append entries")
+            print(self.server.address, "leader is not active and can't send append entries")
             return
         with self.server.lock:
                 # print(self.server.address, "broadcast append entries to ", address)
