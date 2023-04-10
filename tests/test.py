@@ -81,19 +81,25 @@ class TestRaft(unittest.TestCase):
             p.start()
             raft_nodes.append(p)
 
-        time.sleep(1)
+        time.sleep(5)
         res = send_get_status("localhost:5000")
         print(res)
 
-        while is_leader is False:
-            for addr in all_address:
-                # print(s.role, s.address)
-                res = send_get_status(addr)
-                print(res.isLeader)
-                is_leader = res.isLeader
+        # while is_leader is False:
+        for addr in all_address:
+            res = send_get_status(addr)
+            print(addr, res.isLeader)
+            is_leader = res.isLeader
+            if is_leader:
                 break
 
+            # time.sleep(1)
+
         self.assertTrue(is_leader)
+
+        for p in raft_nodes:
+            p.terminate()
+
 
 
 

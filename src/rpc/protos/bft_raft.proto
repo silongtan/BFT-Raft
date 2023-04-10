@@ -24,6 +24,10 @@ service Raft {
 
   // send a new command to the Raft peer, mutate state
   rpc NewCommand (NewCommandRequest) returns (StatusReport);
+
+  rpc Activate (ActivateServerRequest) returns (StatusReport);
+
+  rpc Deactivate (DeactivateServerRequest) returns (StatusReport);
 }
 
 message RestartRequest{
@@ -98,4 +102,12 @@ message GetStatusRequest{
 
 message NewCommandRequest{
   string command = 1;
+}
+
+message ActivateServerRequest{
+  // empty
+}
+
+message DeactivateServerRequest{
+  // empty
 }

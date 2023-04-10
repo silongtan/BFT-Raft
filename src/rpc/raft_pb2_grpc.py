@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import rpc.raft_pb2 as raft__pb2
+import raft_pb2 as raft__pb2
 
 
 class RaftStub(object):
@@ -40,6 +40,11 @@ class RaftStub(object):
                 request_serializer=raft__pb2.NewCommandRequest.SerializeToString,
                 response_deserializer=raft__pb2.StatusReport.FromString,
                 )
+        self.ActivateServer = channel.unary_unary(
+            '/raft.Raft/ActivateServer',
+            request_serializer=raft__pb2.NewCommandRequest.SerializeToString,
+            response_deserializer=raft__pb2.StatusReport.FromString,
+        )
 
 
 class RaftServicer(object):
@@ -79,6 +84,20 @@ class RaftServicer(object):
 
     def NewCommand(self, request, context):
         """send a new command to the Raft peer, mutate state
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ActivateServer(self, request, context):
+        """for test only
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeactivateServer(self, request, context):
+        """for test only
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')

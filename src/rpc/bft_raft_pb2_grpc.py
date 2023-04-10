@@ -40,6 +40,16 @@ class RaftStub(object):
                 request_serializer=bft__raft__pb2.NewCommandRequest.SerializeToString,
                 response_deserializer=bft__raft__pb2.StatusReport.FromString,
                 )
+        self.Activate = channel.unary_unary(
+                '/raft.Raft/Activate',
+                request_serializer=bft__raft__pb2.ActivateServerRequest.SerializeToString,
+                response_deserializer=bft__raft__pb2.StatusReport.FromString,
+                )
+        self.Deactivate = channel.unary_unary(
+                '/raft.Raft/Deactivate',
+                request_serializer=bft__raft__pb2.DeactivateServerRequest.SerializeToString,
+                response_deserializer=bft__raft__pb2.StatusReport.FromString,
+                )
 
 
 class RaftServicer(object):
@@ -87,6 +97,18 @@ class RaftServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Activate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Deactivate(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_RaftServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -113,6 +135,16 @@ def add_RaftServicer_to_server(servicer, server):
             'NewCommand': grpc.unary_unary_rpc_method_handler(
                     servicer.NewCommand,
                     request_deserializer=bft__raft__pb2.NewCommandRequest.FromString,
+                    response_serializer=bft__raft__pb2.StatusReport.SerializeToString,
+            ),
+            'Activate': grpc.unary_unary_rpc_method_handler(
+                    servicer.Activate,
+                    request_deserializer=bft__raft__pb2.ActivateServerRequest.FromString,
+                    response_serializer=bft__raft__pb2.StatusReport.SerializeToString,
+            ),
+            'Deactivate': grpc.unary_unary_rpc_method_handler(
+                    servicer.Deactivate,
+                    request_deserializer=bft__raft__pb2.DeactivateServerRequest.FromString,
                     response_serializer=bft__raft__pb2.StatusReport.SerializeToString,
             ),
     }
@@ -207,6 +239,40 @@ class Raft(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/raft.Raft/NewCommand',
             bft__raft__pb2.NewCommandRequest.SerializeToString,
+            bft__raft__pb2.StatusReport.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Activate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/raft.Raft/Activate',
+            bft__raft__pb2.ActivateServerRequest.SerializeToString,
+            bft__raft__pb2.StatusReport.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Deactivate(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/raft.Raft/Deactivate',
+            bft__raft__pb2.DeactivateServerRequest.SerializeToString,
             bft__raft__pb2.StatusReport.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

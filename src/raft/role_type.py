@@ -36,6 +36,9 @@ class _Role:
 
     # handle receive
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't vote")
+            return
         self.server.reset_timer(self.server.leader_died, self.server.timeout)
         reply = {'term': self.server.term, 'voteMe': False}
         return raft_pb2.RequestVoteReply(**reply)
@@ -45,6 +48,9 @@ class _Role:
     # follower
     def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
         # pass
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't append entries")
+            return
         leader_term = request.term
         leader_id = request.leaderId
         prev_log_index = request.prevLogIndex
@@ -248,6 +254,9 @@ class _Candidate(_Role):
 
 class _Leader(_Role):
     def run(self):
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't run")
+            return
         print(self.server.address, "I am leader leading in term:", self.server.term)
         self.server.next_index = {key: len(self.server.log) for key in self.server.peers}
         self.server.match_index = {key: -1 for key in self.server.peers}
@@ -257,11 +266,17 @@ class _Leader(_Role):
 
     def broadcast_append_entries(self):
         # TODO: multi-thread
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't broadcast append entries")
+            return
         self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
         for value in self.server.peers:
             self.send_append_entries(value)
 
     def send_append_entries(self, address: str):
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't send append entries")
+            return
         with self.server.lock:
                 # print(self.server.address, "broadcast append entries to ", address)
             current_role = self.server.role
@@ -280,7 +295,7 @@ class _Leader(_Role):
                         'prevLogIndex': prev_log_index,
                         'prevLogTerm': self.server.log[prev_log_index].term if prev_log_index != -1 else 0,
                         'entries': entries,
-                        'leaderCommitIndex': self.server.committed_index}
+                        'leaderCommitIndex': self.server.committed_index,}
                 # 'signedVote': self.server.signed_votes}
                 # print(self.server.signed_votes)
                 if DEBUG:

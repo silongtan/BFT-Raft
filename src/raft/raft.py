@@ -48,6 +48,9 @@ class Raft(RaftServicer):
         self.majority = self.get_majority(self.num)
         self.vote_for = -1  # candidateId that received vote in current term (or -1 if none)
 
+        # only for test
+        self.active = True
+
         # volatile state on all servers: log & commit
         self.committed_index = -1  # initially -1, represents currently the latest committed entry index
         self.last_applied = -1  # initially -1, represents currently the latest applied entry index
@@ -93,6 +96,10 @@ class Raft(RaftServicer):
 
     def AppendEntries(self, request, context):
         # TODO
+        if self.active is False:
+            print("replica is not active")
+            return
+
         print(self.address + " received AppendEntriesReply from " + str(request.leaderId))
         response = dispatch(self).append_entries(request, context)
         # logging.debug(self.address + " - append entries success: " + str(response.success))
@@ -106,12 +113,20 @@ class Raft(RaftServicer):
         # return raft_pb2.AppendEntriesReply(**reply)
 
     def RequestVote(self, request, context):
+        if self.active is False:
+            print("replica is not active")
+            return
+
         logging.debug(self.address + " received RequestVote from " + str(request.candidateId))
         response = dispatch(self).vote(request, context)
         logging.debug(self.address + " vote to: " + str(response.voteFor) + " " + str(response.voteMe))
         return response
 
     def NewCommand(self, request, context):
+        if self.active is False:
+            print("replica is not active")
+            return
+
         with self.lock:
             if self.role != RoleType.LEADER:
                 return self.get_status_report()
@@ -144,11 +159,13 @@ class Raft(RaftServicer):
         else:
             return raft_pb2.GetCommittedCmdReply(command="")
 
-    def activate(self):
-        pass
+    def Activate(self, request, context):
+        self.active = True
+        return self.get_status_report()
 
-    def deactivate(self):
-        pass
+    def Deactivate(self, request, context):
+        self.active = False
+        return self.get_status_report()
 
     def become(self, role: RoleType):
         logging.debug(self.address + " become " + str(role) + ", prev term: " + str(self.term))
