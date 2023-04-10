@@ -8,7 +8,8 @@ from concurrent import futures
 import sys
 import grpc
 import rsa
-
+from grpc import aio
+import asyncio
 # import rpc.raft_pb2 as raft_pb2
 # import rpc.raft_pb2_grpc as raft_pb2_grpc
 # from rpc.raft_pb2_grpc import RaftServicer
@@ -106,6 +107,7 @@ class Raft(RaftServicer):
         # return raft_pb2.AppendEntriesReply(**reply)
 
     def RequestVote(self, request, context):
+
         logging.debug(self.address + " received RequestVote from " + str(request.candidateId))
         response = dispatch(self).vote(request, context)
         logging.debug(self.address + " vote to: " + str(response.voteFor) + " " + str(response.voteMe))
@@ -152,6 +154,7 @@ class Raft(RaftServicer):
 
     def become(self, role: RoleType):
         logging.debug(self.address + " become " + str(role) + ", prev term: " + str(self.term))
+        # self.election_timer.cancel()
         self.isLeaderDead = False
         with self.lock:
             self.role = role
@@ -211,8 +214,39 @@ class Raft(RaftServicer):
         # else:
         #     return False
 
-    # def decode_msg(self, encrypted_msg):
-    #     return rsa.decrypt(encrypted_msg, self.private_key).decode()
+
+# def decode_msg(self, encrypted_msg):
+#     return rsa.decrypt(encrypted_msg, self.private_key).decode()
+
+
+async def async_server():
+    all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+    p = sys.argv[1]
+    with open(f"keys/private/localhost:{p}.pem", "r") as f:
+        private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+    public_keys = {}
+    for address in all_address:
+        with open(f"keys/public/{address}.pem", "r") as f:
+            # public_key = f.read()
+            # public_key = RSA.importKey(public_key)
+            public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+            public_keys[address] = public_key
+    print("Starting server on port: " + p)
+    raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
+    # server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = aio.server()
+    # server = aio.server()
+    raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
+    server.add_insecure_port("localhost:" + p)
+    await server.start()
+    await server.wait_for_termination()
+    # try:
+    #     server.start()
+    #     while True:
+    #         server.wait_for_termination()
+    # except KeyboardInterrupt:
+    #     server.stop(0)
+    #     print("Server" + raft_server.address + "is shutting down")
 
 
 def serve_one():
@@ -242,6 +276,7 @@ def serve_one():
     print("Starting server on port: " + p)
     raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    # server = aio.server()
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
     server.add_insecure_port("localhost:" + p)
     try:
@@ -303,3 +338,4 @@ def serve_one():
 
 if __name__ == "__main__":
     serve_one()
+    # asyncio.run(async_server())

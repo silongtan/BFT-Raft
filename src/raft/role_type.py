@@ -1,3 +1,5 @@
+import asyncio
+import time
 from enum import Enum
 
 import grpc
@@ -35,6 +37,7 @@ class _Role:
         self.server = server
 
     # handle receive
+
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
         self.server.reset_timer(self.server.leader_died, self.server.timeout)
         reply = {'term': self.server.term, 'voteMe': False}
@@ -135,6 +138,7 @@ class _Follower(_Role):
         #     print('server'+self.server.)
         #     return raft_pb2.RequestVoteReply(**reply)
         # vote for the candidate with the higher term
+
         if candidate_term < self.server.term:
             should_vote = False
         else:
@@ -154,7 +158,27 @@ class _Follower(_Role):
             candidate_id)
         reply = {'term': self.server.term, 'voteMe': should_vote, 'signature': self.server.sign_msg(msg),
                  'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(candidate_id)}
+
+        if should_vote:
+            self.server.reset_timer(self.server.leader_died, self.server.timeout)
+
+        if not self.server.isLeaderDead:
+            reply['voteMe'] = False
+            return raft_pb2.RequestVoteReply(**reply)
+        # time.sleep(3)
+        # raft_pb2.RequestVoteReply(**reply).Re, self.server.timeout)
+        # threading.Timer(3, lambda: raft_pb2.RequestVoteReply(**reply)).start()
         return raft_pb2.RequestVoteReply(**reply)
+
+    # def send_vote_reply(self, request, context):
+    #     should_vote = False
+    #     candidate_id = request.candidateId
+    #     candidate_term = request.term
+    #     msg = str(candidate_term) + " " + str(candidate_id) + " " + self.server.address + " localhost:" + str(
+    #         candidate_id)
+    #     reply = {'term': self.server.term, 'voteMe': should_vote, 'signature': self.server.sign_msg(msg),
+    #              'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(candidate_id)}
+    #     return raft_pb2.RequestVoteReply(**reply)
 
     # def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
     #     leader_term = request.term
@@ -183,10 +207,12 @@ class _Candidate(_Role):
         self.server.reset_timer(self.process_vote, self.server.timeout)
         for value in self.server.peers:
             self.ask_vote(value, barrier)
-            # threading.Thread(target=self.ask_vote,args=(value,barrier)).start()
+            # asyncio.run(self.ask_vote(value, barrier))
+        # threading.Thread(target=self.ask_vote,args=(value,barrier)).start()
         # self.server.reset_timer(self.process_vote, self.server.timeout)
 
     # TODO: barrier
+
     def ask_vote(self, address: str, barrier: threading.Barrier):
         print(self.server.address, 'ask vote', address)
         try:
@@ -197,7 +223,7 @@ class _Candidate(_Role):
                         'lastLogIndex': self.server.get_last_log_index(),
                         'lastLogTerm': self.server.get_last_log_term()}
                 request = raft_pb2.RequestVoteRequest(**args)
-                response = stub.RequestVote(request)
+                response = stub.RequestVote.future(request).result()
                 # print("vote response", response)
                 if response.voteMe:
                     self.server.votes_granted += 1
@@ -227,23 +253,24 @@ class _Candidate(_Role):
             print(self.server.address, "process vote fail, become follower")
             self.server.become(RoleType.CANDIDATE)
 
-    # def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
-    #     leader_term = request.term
-    #     leader_id = request.leaderId
-    #     prev_log_index = request.prevLogIndex
-    #     prev_log_term = request.prevLogTerm
-    #     leader_commit_index = request.leaderCommitIndex
-    #
-    #     if leader_term > self.server.term:
-    #         print(0)
-    #         self.server.become(RoleType.FOLLOWER)
-    #     elif prev_log_term > self.server.get_last_log_term():
-    #         print(1)
-    #         self.server.become(RoleType.FOLLOWER)
-    #     elif prev_log_term == self.server.get_last_log_term() and prev_log_index >= self.server.get_last_log_index():
-    #         print(2)
-    #         self.server.become(RoleType.FOLLOWER)
-    #     return raft_pb2.AppendEntriesReply(term=self.server.term, success=False)
+
+# def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
+#     leader_term = request.term
+#     leader_id = request.leaderId
+#     prev_log_index = request.prevLogIndex
+#     prev_log_term = request.prevLogTerm
+#     leader_commit_index = request.leaderCommitIndex
+#
+#     if leader_term > self.server.term:
+#         print(0)
+#         self.server.become(RoleType.FOLLOWER)
+#     elif prev_log_term > self.server.get_last_log_term():
+#         print(1)
+#         self.server.become(RoleType.FOLLOWER)
+#     elif prev_log_term == self.server.get_last_log_term() and prev_log_index >= self.server.get_last_log_index():
+#         print(2)
+#         self.server.become(RoleType.FOLLOWER)
+#     return raft_pb2.AppendEntriesReply(term=self.server.term, success=False)
 
 
 class _Leader(_Role):
@@ -263,7 +290,7 @@ class _Leader(_Role):
 
     def send_append_entries(self, address: str):
         with self.server.lock:
-                # print(self.server.address, "broadcast append entries to ", address)
+            # print(self.server.address, "broadcast append entries to ", address)
             current_role = self.server.role
         if current_role != RoleType.LEADER:
             return
