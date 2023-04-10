@@ -166,6 +166,48 @@ class TestRaft(unittest.TestCase):
             for p in raft_nodes:
                 p.terminate()
 
+    def test06_duplicatedLeader(self):
+        max_leader_count = 0
+        # raft_nodes = []
+        # all_port = [5000, 5001, 5002]
+        # all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+        #
+        # for port in all_port:
+        #     p = Process(target=serve, args=(all_port, all_address, port))
+        #     p.start()
+        #     raft_nodes.append(p)
+
+        is_leader = False
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+
+        time.sleep(1)
+
+        for i in range(10):
+            time.sleep(1)
+            temp_count = 0
+            for addr in all_address:
+                res = send_get_status(addr)
+                if res.isLeader:
+                    temp_count += 1
+            max_leader_count = max(temp_count, max_leader_count)
+
+        self.assertTrue(max_leader_count == 1)
+
 
 
 
