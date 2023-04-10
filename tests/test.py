@@ -197,7 +197,8 @@ class TestRaft(unittest.TestCase):
             max_leader_count = max(temp_count, max_leader_count)
 
         self.assertTrue(max_leader_count == 1)
-
+        for p in raft_nodes:
+            p.terminate()
 
 
 
