@@ -8,6 +8,8 @@ service Raft {
 
   rpc RequestVote (RequestVoteRequest) returns (RequestVoteReply);
 
+  rpc ReSendVoteReply (RequestVoteReply) returns (Nothing);
+
   // GetCommittedCmd -- called (only) by the Controller.  This method provides an input argument
   // `index`.  If the Raft peer has a log entry at the given `index`, and that log entry has been
   // committed (per the Raft algorithm), then the command stored in the log entry should be returned
@@ -26,9 +28,9 @@ service Raft {
   rpc NewCommand (NewCommandRequest) returns (StatusReport);
 }
 
-message RestartRequest{
-
-}
+//message RestartRequest{
+//
+//}
 
 //message RestartReply
 //message RestartReply{
@@ -81,6 +83,7 @@ message RequestVoteReply{
   bytes signature = 3; // verify if the reply is from 'from' location
   string voteFrom = 4;
   string voteFor = 5;
+  bool isValid = 6;
 }
 
 message GetCommittedCmdRequest{
@@ -98,4 +101,8 @@ message GetStatusRequest{
 
 message NewCommandRequest{
   string command = 1;
+}
+
+message Nothing{
+
 }

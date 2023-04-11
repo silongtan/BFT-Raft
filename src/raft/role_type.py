@@ -37,10 +37,12 @@ class _Role:
         self.server = server
 
     # handle receive
+    def resend_vote_reply(self, delay_vote: dict):
+        pass
 
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
         self.server.reset_timer(self.server.leader_died, self.server.timeout)
-        reply = {'term': self.server.term, 'voteMe': False}
+        reply = {'term': self.server.term, 'voteMe': False, 'isValid': True}
         return raft_pb2.RequestVoteReply(**reply)
 
     # handle receive
@@ -119,13 +121,33 @@ class _Role:
 class _Follower(_Role):
     def run(self):
         # print('test')f
-
+        self.server.delay_vote = None
         self.server.vote_for = -1
         self.server.votes_granted = 0
         self.server.signed_votes = []
         self.server.reset_timeout()
         self.server.reset_timer(self.server.leader_died, self.server.timeout)
         # self.server.reset_timer(lambda: print("reachingiiiiiiiii"), self.server.timeout)
+
+    def resend_vote_reply(self, delay_vote: dict):
+        print('resend')
+        # send revote reply
+        # msg = str(delay_vote.get('candidate_term')) + " " + str(
+        #     delay_vote.get('candidate_id')) + " " + self.server.address + " localhost:" + str(
+        #     delay_vote.get('candidate_id'))
+        print('resend_vote_reply  delay_vote', delay_vote)
+        # print(msg)
+        # reply = {'term': self.server.term, 'voteMe': True, 'signature': self.server.sign_msg(msg),
+        #          'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(delay_vote.get('candidate_id')),
+        #          'isValid': True}
+        try:
+            with grpc.insecure_channel(delay_vote.get('voteFor')) as channel:
+                stub = raft_pb2_grpc.RaftStub(channel)
+                request = raft_pb2.RequestVoteReply(**delay_vote, isValid=True)
+                response = stub.ReSendVoteReply(request)
+        except grpc.RpcError as e:
+            print("connection error", e)
+            logging.error("connection error")
 
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
         should_vote = False
@@ -135,9 +157,15 @@ class _Follower(_Role):
         # if not self.server.isLeaderDead:
         #     reply = {'term': self.server.term, 'voteMe': False, 'signature': None,
         #              'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(candidate_id)}
-        #     print('server'+self.server.)
+        #     # print('server'+self.server.)
         #     return raft_pb2.RequestVoteReply(**reply)
         # vote for the candidate with the higher term
+        if self.server.delay_vote is not None:
+            reply = {'term': self.server.term, 'voteMe': False, 'signature': None,
+                     'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(candidate_id),
+                     'isValid': True}
+            # print('server'+self.server.)
+            return raft_pb2.RequestVoteReply(**reply)
 
         if candidate_term < self.server.term:
             should_vote = False
@@ -162,13 +190,17 @@ class _Follower(_Role):
         if should_vote:
             self.server.reset_timer(self.server.leader_died, self.server.timeout)
 
-        if not self.server.isLeaderDead:
-            reply['voteMe'] = False
-            return raft_pb2.RequestVoteReply(**reply)
+        # if not self.server.isLeaderDead:
+        #     reply['voteMe'] = False
+        #     return raft_pb2.RequestVoteReply(**reply)
         # time.sleep(3)
         # raft_pb2.RequestVoteReply(**reply).Re, self.server.timeout)
         # threading.Timer(3, lambda: raft_pb2.RequestVoteReply(**reply)).start()
-        return raft_pb2.RequestVoteReply(**reply)
+        if reply['voteMe']:
+            self.server.delay_vote = reply
+            return raft_pb2.RequestVoteReply(**reply, isValid=False)
+        else:
+            return raft_pb2.RequestVoteReply(**reply, isValid=True)
 
     # def send_vote_reply(self, request, context):
     #     should_vote = False
@@ -223,7 +255,13 @@ class _Candidate(_Role):
                         'lastLogIndex': self.server.get_last_log_index(),
                         'lastLogTerm': self.server.get_last_log_term()}
                 request = raft_pb2.RequestVoteRequest(**args)
-                response = stub.RequestVote.future(request).result()
+                response = stub.RequestVote(request)
+                if not response.isValid:
+                    print('waiting for another vote when leader died, reset timer')
+                    # self.server.reset_timer(self.process_vote, self.server.timeout)
+                    self.server.election_timer.cancel()
+                    return
+                # response = stub.RequestVote.future(request).result()
                 # print("vote response", response)
                 if response.voteMe:
                     self.server.votes_granted += 1
