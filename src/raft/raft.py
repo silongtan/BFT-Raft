@@ -274,9 +274,7 @@ def serve_one():
             # print(public_key)
 
     private_key_path = "credentials/localhost:" + p + ".key"
-    print(private_key_path)
     cert_chain_path = "credentials/localhost:" + p + ".crt"
-    print(cert_chain_path)
     root_ca_path = "credentials/root.crt"
     private_key = _credentials._load_credential_from_file(private_key_path)
     cert_chain = _credentials._load_credential_from_file(cert_chain_path)
@@ -291,15 +289,16 @@ def serve_one():
     # server.add_insecure_port("localhost:" + p)
 
     # load credentials
-    server_credentials = grpc.ssl_server_credentials(((private_key,cert_chain),), root_certificates=root_ca)
+    # server_credentials = grpc.ssl_server_credentials(((private_key,cert_chain),), root_certificates=root_ca)
+    server_credentials = grpc.ssl_server_credentials(((private_key,cert_chain,),))
 
     # pass down the credentials to the server
     port = server.add_secure_port("localhost:" + p,
                                   server_credentials)
 
-    # create a channel with the root certificate for secure communication
-    channel_credentials = grpc.ssl_channel_credentials(root_ca)
-    channel = grpc.secure_channel('{}:{}'.format("localhost", p), channel_credentials)
+    # # create a channel with the root certificate for secure communication
+    # channel_credentials = grpc.ssl_channel_credentials(root_ca)
+    # channel = grpc.secure_channel('{}:{}'.format("localhost", p), channel_credentials)
 
     try:
         # print(bytes(True))
