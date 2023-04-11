@@ -203,8 +203,57 @@ class TestRaft(unittest.TestCase):
             for p in raft_nodes:
                 p.terminate()
 
+    def test07_basicLog(self):
+        alreadySend = False
+        added = [raft_pb2.LogEntry(term=1, command="add 1 2")]
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
 
-    def test07_logCheck(self):
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+
+        time.sleep(10)
+
+        while alreadySend is False:
+            for addr in all_address:
+                res = send_get_status(addr)
+                print(addr, res)
+                if res.isLeader:
+                    send_new_command(addr, "add 1 2")
+                    alreadySend = True
+                    break
+                time.sleep(3)
+
+        time.sleep(10)
+        result = ''
+        for addr in all_address:
+            res = send_get_status(addr)
+            if res.isLeader:
+                result = res.log
+                break
+
+        print("result:", result)
+        print("added", added)
+        try:
+            self.assertEqual(result, added)
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
+
+    def test08_advancedLogCheck(self):
         raft_nodes = []
         all_port = [5000, 5001, 5002]
         all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
@@ -224,9 +273,9 @@ class TestRaft(unittest.TestCase):
         time.sleep(10)
         print("sad")
         for i in range(10):
-            command = "add key" + str(i) + " " + str(i)
-            print(command)
-            send_new_command(all_address[0], command)
+            command = "add " + str(i) + " " + str(i)
+            for address in all_address:
+                send_new_command(address, command)
 
         all_logs = []
         for addr in all_address:
