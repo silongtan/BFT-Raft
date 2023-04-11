@@ -12,6 +12,8 @@ import threading
 import rpc.bft_raft_pb2 as raft_pb2
 import rpc.bft_raft_pb2_grpc as raft_pb2_grpc
 
+import json
+
 
 class RoleType(Enum):
     FOLLOWER = 'follower'
@@ -109,10 +111,12 @@ class _Role:
 
             if prev_log_index == -1:
                 success = True
-                self.server.log = request.entries
-            elif prev_log_term == self.server.log[prev_log_index].term and len(self.server.log) > prev_log_index:
+                # self.server.log = request.entries
+                self.server.log = [{'term': r.term, 'command': r.command} for r in request.entries]
+            elif prev_log_term == self.server.log[prev_log_index].get('term') and len(self.server.log) > prev_log_index:
                 success = True
-                self.server.log = self.server.log[:prev_log_index + 1] + request.entries
+                self.server.log = self.server.log[:prev_log_index + 1] + [{'term': r.term, 'command': r.command} for r
+                                                                          in request.entries]
         if leader_commit_index > self.server.committed_index:
             self.server.commit_index = min(leader_commit_index, len(self.server.log) - 1)
             self.server.apply_log(self.server.commit_index)
@@ -364,23 +368,32 @@ class _Leader(_Role):
                 # print()
                 # print('print(prev_log_index)',prev_log_index)
                 entries = self.server.log[self.server.next_index[address]:]
+                entries = [raft_pb2.LogEntry(term=entry.get('term'), command=entry.get('command')) for entry in entries]
+                print('prev_log_index: ', prev_log_index)
+                print('tttttt: ', self.server.log, )
+                if prev_log_index != -1:
+                    print('self.server.log[prev_log_index]', self.server.log[prev_log_index])
+                print('self.server.log[prev_log_index].term if prev_log_index != -1 else 0:',
+                      self.server.log[prev_log_index].get('term') if prev_log_index != -1 else 0)
                 args = {'term': self.server.term,
                         'leaderId': self.server.id,
                         'prevLogIndex': prev_log_index,
-                        'prevLogTerm': self.server.log[prev_log_index].term if prev_log_index != -1 else 0,
-                        'entries': entries,
-                        'leaderCommitIndex': self.server.committed_index,}
+                        'prevLogTerm': self.server.log[prev_log_index].get('term') if prev_log_index != -1 else 0,
+                        # 'entries': entries,
+                        'leaderCommitIndex': self.server.committed_index, }
+                # args['entries']
                 # 'signedVote': self.server.signed_votes}
                 # print(self.server.signed_votes)
-                if DEBUG:
-                    if len(entries) > 0:
-                        logging.debug(self.server.id, "send append entries to nextIndex[i]",
-                                      self.server.nextIndex[address],
-                                      "with args", args, "to", address)
-                    else:
-                        logging.debug(str(self.server.id) + " send heartbeat to" + address)
+                # if DEBUG:
+                #     if len(entries) > 0:
+                #         logging.debug(self.server.id, "send append entries to nextIndex[i]",
+                #                       self.server.next_index[address],
+                #                       "with args", json.dumps(args,indent=4), "to", address)
+                #     else:
+                #         logging.debug(str(self.server.id) + " send heartbeat to" + address)
                 # print(self.server.address,'signedVote', self.server.signed_votes)
                 request = raft_pb2.AppendEntriesRequest(**args)
+                request.entries.extend(entries)
                 request.signedVote.extend(self.server.signed_votes)
                 # print("request.signedVote", request.signedVote)
                 response = stub.AppendEntries(request)
@@ -398,7 +411,7 @@ class _Leader(_Role):
                     self.server.next_index[address] += len(entries)
                     self.server.match_index[address] = self.server.next_index[address] - 1
                 for i in range(self.server.committed_index + 1, len(self.server.log)):
-                    if self.server.log[i].term == self.server.term:
+                    if self.server.log[i].get('term') == self.server.term:
                         count = 1
                         for value in self.server.match_index.values():
                             if value >= i:

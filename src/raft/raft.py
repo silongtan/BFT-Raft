@@ -138,7 +138,7 @@ class Raft(RaftServicer):
                 return self.get_status_report()
 
     def ReSendVoteReply(self, response, context):
-        print("ReSendVoteReply", response)
+        # print("ReSendVoteReply", response)
         # never reach here
         if not response.isValid:
             print('invalid vote,reset timer')
@@ -240,7 +240,8 @@ class Raft(RaftServicer):
     # both inclusive
     def apply_log(self, index: int):
         for i in range(self.last_applied + 1, index + 1):
-            self.app.execute(self.log[i])
+            # pass
+            self.app.execute(self.log[i].get('command'))
         self.last_applied = index
 
     def sign_msg(self, msg):

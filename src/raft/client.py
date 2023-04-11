@@ -66,11 +66,15 @@ def deactivate_replica(replica_address: str):
 
 if __name__ == '__main__':
     for i in range(5000,5003):
-        with grpc.insecure_channel(f"localhost:{i}") as channel:
-            stub = raft_pb2_grpc.RaftStub(channel)
-            # get_committed_cmd_request = raft_pb2.GetCommittedCmdRequest()
-            # vote_request = raft_pb2.RequestVoteRequest(term=1, candidateId=1, lastLogIndex=0, lastLogTerm=0)
-            # get status request
-            get_status_request = raft_pb2.GetStatusRequest()
-            status_reply = stub.GetStatus(get_status_request)
-            print(status_reply)
+        command = "add " + str(i) + " " + str(i)
+        send_new_command(f"localhost:{i}", command)
+        # print(status_reply)
+    # for i in range(5000,5003):
+    #     with grpc.insecure_channel(f"localhost:{i}") as channel:
+    #         stub = raft_pb2_grpc.RaftStub(channel)
+    #         # get_committed_cmd_request = raft_pb2.GetCommittedCmdRequest()
+    #         # vote_request = raft_pb2.RequestVoteRequest(term=1, candidateId=1, lastLogIndex=0, lastLogTerm=0)
+    #         # get status request
+    #         get_status_request = raft_pb2.GetStatusRequest()
+    #         status_reply = stub.GetStatus(get_status_request)
+    #         print(status_reply)
