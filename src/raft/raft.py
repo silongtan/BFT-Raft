@@ -142,7 +142,16 @@ class Raft(RaftServicer):
         # print('get_status_report')
         # print(self.role == RoleType.LEADER)
         report = raft_pb2.StatusReport(**args)
-        report.log.extend(self.log)
+        print("LOG: ", self.log)
+        if not self.log:
+            report.log.extend(self.log)
+        else:
+            res = [raft_pb2.LogEntry(term=self.log[i].get('term'),
+                                     command=self.log[i].get('command')) for i in range(len(self.log))]
+            # msg =
+            report.log.extend(res)
+
+        # report.log.extend(self.log)
         return report
 
     def GetStatus(self, request, context):
