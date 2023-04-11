@@ -1,5 +1,5 @@
 grpcio
-grpcio-tools
+grpcio-tools==1.53.0
 # grpcio and grpcio-tools packages are not required in runtime, grpcio-tools package will be used only during code generation
 # pycryptodome
 rsa

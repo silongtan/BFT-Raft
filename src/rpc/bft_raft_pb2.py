@@ -13,35 +13,41 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x62\x66t_raft.proto\x12\x04raft\")\n\x08LogEntry\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ommand\x18\x02 \x01(\t\"c\n\x0cStatusReport\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x16\n\x0e\x63ommittedIndex\x18\x02 \x01(\x05\x12\x10\n\x08isLeader\x18\x03 \x01(\x08\x12\x1b\n\x03log\x18\x04 \x03(\x0b\x32\x0e.raft.LogEntry\"\xc9\x01\n\x14\x41ppendEntriesRequest\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x10\n\x08leaderId\x18\x02 \x01(\x05\x12\x14\n\x0cprevLogIndex\x18\x03 \x01(\x05\x12\x13\n\x0bprevLogTerm\x18\x04 \x01(\x05\x12\x1f\n\x07\x65ntries\x18\x05 \x03(\x0b\x32\x0e.raft.LogEntry\x12\x19\n\x11leaderCommitIndex\x18\x06 \x01(\x05\x12*\n\nsignedVote\x18\x07 \x03(\x0b\x32\x16.raft.RequestVoteReply\"3\n\x12\x41ppendEntriesReply\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x0f\n\x07success\x18\x02 \x01(\x08\"b\n\x12RequestVoteRequest\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x13\n\x0b\x63\x61ndidateId\x18\x02 \x01(\x05\x12\x14\n\x0clastLogIndex\x18\x03 \x01(\x05\x12\x13\n\x0blastLogTerm\x18\x04 \x01(\x05\"w\n\x10RequestVoteReply\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x0e\n\x06voteMe\x18\x02 \x01(\x08\x12\x11\n\tsignature\x18\x03 \x01(\x0c\x12\x10\n\x08voteFrom\x18\x04 \x01(\t\x12\x0f\n\x07voteFor\x18\x05 \x01(\t\x12\x0f\n\x07isValid\x18\x06 \x01(\x08\"\'\n\x16GetCommittedCmdRequest\x12\r\n\x05index\x18\x01 \x01(\x05\"\'\n\x14GetCommittedCmdReply\x12\x0f\n\x07\x63ommand\x18\x01 \x01(\t\"\x12\n\x10GetStatusRequest\"$\n\x11NewCommandRequest\x12\x0f\n\x07\x63ommand\x18\x01 \x01(\t\"\t\n\x07Nothing2\x89\x03\n\x04Raft\x12\x45\n\rAppendEntries\x12\x1a.raft.AppendEntriesRequest\x1a\x18.raft.AppendEntriesReply\x12?\n\x0bRequestVote\x12\x18.raft.RequestVoteRequest\x1a\x16.raft.RequestVoteReply\x12\x38\n\x0fReSendVoteReply\x12\x16.raft.RequestVoteReply\x1a\r.raft.Nothing\x12K\n\x0fGetCommittedCmd\x12\x1c.raft.GetCommittedCmdRequest\x1a\x1a.raft.GetCommittedCmdReply\x12\x37\n\tGetStatus\x12\x16.raft.GetStatusRequest\x1a\x12.raft.StatusReport\x12\x39\n\nNewCommand\x12\x17.raft.NewCommandRequest\x1a\x12.raft.StatusReportb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x62\x66t_raft.proto\x12\x04raft\"\x10\n\x0eRestartRequest\")\n\x08LogEntry\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ommand\x18\x02 \x01(\t\"c\n\x0cStatusReport\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x16\n\x0e\x63ommittedIndex\x18\x02 \x01(\x05\x12\x10\n\x08isLeader\x18\x03 \x01(\x08\x12\x1b\n\x03log\x18\x04 \x03(\x0b\x32\x0e.raft.LogEntry\"\xc9\x01\n\x14\x41ppendEntriesRequest\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x10\n\x08leaderId\x18\x02 \x01(\x05\x12\x14\n\x0cprevLogIndex\x18\x03 \x01(\x05\x12\x13\n\x0bprevLogTerm\x18\x04 \x01(\x05\x12\x1f\n\x07\x65ntries\x18\x05 \x03(\x0b\x32\x0e.raft.LogEntry\x12\x19\n\x11leaderCommitIndex\x18\x06 \x01(\x05\x12*\n\nsignedVote\x18\x07 \x03(\x0b\x32\x16.raft.RequestVoteReply\"3\n\x12\x41ppendEntriesReply\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x0f\n\x07success\x18\x02 \x01(\x08\"b\n\x12RequestVoteRequest\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x13\n\x0b\x63\x61ndidateId\x18\x02 \x01(\x05\x12\x14\n\x0clastLogIndex\x18\x03 \x01(\x05\x12\x13\n\x0blastLogTerm\x18\x04 \x01(\x05\"f\n\x10RequestVoteReply\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x0e\n\x06voteMe\x18\x02 \x01(\x08\x12\x11\n\tsignature\x18\x03 \x01(\x0c\x12\x10\n\x08voteFrom\x18\x04 \x01(\t\x12\x0f\n\x07voteFor\x18\x05 \x01(\t\"\'\n\x16GetCommittedCmdRequest\x12\r\n\x05index\x18\x01 \x01(\x05\"\'\n\x14GetCommittedCmdReply\x12\x0f\n\x07\x63ommand\x18\x01 \x01(\t\"\x12\n\x10GetStatusRequest\"$\n\x11NewCommandRequest\x12\x0f\n\x07\x63ommand\x18\x01 \x01(\t\"\x17\n\x15\x41\x63tivateServerRequest\"\x19\n\x17\x44\x65\x61\x63tivateServerRequest2\xcd\x03\n\x04Raft\x12\x45\n\rAppendEntries\x12\x1a.raft.AppendEntriesRequest\x1a\x18.raft.AppendEntriesReply\x12?\n\x0bRequestVote\x12\x18.raft.RequestVoteRequest\x1a\x16.raft.RequestVoteReply\x12K\n\x0fGetCommittedCmd\x12\x1c.raft.GetCommittedCmdRequest\x1a\x1a.raft.GetCommittedCmdReply\x12\x37\n\tGetStatus\x12\x16.raft.GetStatusRequest\x1a\x12.raft.StatusReport\x12\x39\n\nNewCommand\x12\x17.raft.NewCommandRequest\x1a\x12.raft.StatusReport\x12;\n\x08\x41\x63tivate\x12\x1b.raft.ActivateServerRequest\x1a\x12.raft.StatusReport\x12?\n\nDeactivate\x12\x1d.raft.DeactivateServerRequest\x1a\x12.raft.StatusReportb\x06proto3')
+
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'bft_raft_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _LOGENTRY._serialized_start=24
-  _LOGENTRY._serialized_end=65
-  _STATUSREPORT._serialized_start=67
-  _STATUSREPORT._serialized_end=166
-  _APPENDENTRIESREQUEST._serialized_start=169
-  _APPENDENTRIESREQUEST._serialized_end=370
-  _APPENDENTRIESREPLY._serialized_start=372
-  _APPENDENTRIESREPLY._serialized_end=423
-  _REQUESTVOTEREQUEST._serialized_start=425
-  _REQUESTVOTEREQUEST._serialized_end=523
-  _REQUESTVOTEREPLY._serialized_start=525
-  _REQUESTVOTEREPLY._serialized_end=644
-  _GETCOMMITTEDCMDREQUEST._serialized_start=646
-  _GETCOMMITTEDCMDREQUEST._serialized_end=685
-  _GETCOMMITTEDCMDREPLY._serialized_start=687
-  _GETCOMMITTEDCMDREPLY._serialized_end=726
-  _GETSTATUSREQUEST._serialized_start=728
-  _GETSTATUSREQUEST._serialized_end=746
-  _NEWCOMMANDREQUEST._serialized_start=748
-  _NEWCOMMANDREQUEST._serialized_end=784
-  _NOTHING._serialized_start=786
-  _NOTHING._serialized_end=795
-  _RAFT._serialized_start=798
-  _RAFT._serialized_end=1191
+
+  _RESTARTREQUEST._serialized_start=24
+  _RESTARTREQUEST._serialized_end=40
+  _LOGENTRY._serialized_start=42
+  _LOGENTRY._serialized_end=83
+  _STATUSREPORT._serialized_start=85
+  _STATUSREPORT._serialized_end=184
+  _APPENDENTRIESREQUEST._serialized_start=187
+  _APPENDENTRIESREQUEST._serialized_end=388
+  _APPENDENTRIESREPLY._serialized_start=390
+  _APPENDENTRIESREPLY._serialized_end=441
+  _REQUESTVOTEREQUEST._serialized_start=443
+  _REQUESTVOTEREQUEST._serialized_end=541
+  _REQUESTVOTEREPLY._serialized_start=543
+  _REQUESTVOTEREPLY._serialized_end=645
+  _GETCOMMITTEDCMDREQUEST._serialized_start=647
+  _GETCOMMITTEDCMDREQUEST._serialized_end=686
+  _GETCOMMITTEDCMDREPLY._serialized_start=688
+  _GETCOMMITTEDCMDREPLY._serialized_end=727
+  _GETSTATUSREQUEST._serialized_start=729
+  _GETSTATUSREQUEST._serialized_end=747
+  _NEWCOMMANDREQUEST._serialized_start=749
+  _NEWCOMMANDREQUEST._serialized_end=785
+  _ACTIVATESERVERREQUEST._serialized_start=787
+  _ACTIVATESERVERREQUEST._serialized_end=810
+  _DEACTIVATESERVERREQUEST._serialized_start=812
+  _DEACTIVATESERVERREQUEST._serialized_end=837
+  _RAFT._serialized_start=840
+  _RAFT._serialized_end=1301
 # @@protoc_insertion_point(module_scope)

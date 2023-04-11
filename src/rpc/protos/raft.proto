@@ -81,3 +81,11 @@ message GetStatusRequest{
 message NewCommandRequest{
   string command = 1;
 }
+
+message ActiveServerRequest{
+  // empty
+}
+
+message DeactivateServerRequest{
+  // empty
+}

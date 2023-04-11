@@ -1,26 +1,17 @@
 import sys
 import unittest
 import time
-from multiprocessing import Process, Manager
+from multiprocessing import Process
 
 sys.path.append('../src/raft')
 from raft.raft import *
 from raft.client import *
 
 
-def whatever(magic_list):
-    magic_list.append(1)
-
-
-def serve(all_port: list, all_address: list, port: int):
-    # all_port = [5000, 5001, 5002]
-    # all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
-
-    # for p in all_port:
-    # p = sys.argv[1]
+def serve(all_address: list, port: int, public_keys: dict, private_key: rsa.PrivateKey):
     p = str(port)
     print("Starting server on port: " + p)
-    raft_server = Raft(int(p), all_address, 3,None,None)
+    raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
     server.add_insecure_port("localhost:" + p)
@@ -41,8 +32,11 @@ class TestRaft(unittest.TestCase):
         raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
         server.add_insecure_port("localhost:5000")
         server.start()
-        self.assertEqual(raft_server.address, "localhost:5000")
-        server.stop(0)
+        try:
+            self.assertEqual(raft_server.address, "localhost:5000")
+            server.stop(0)
+        except KeyboardInterrupt:
+            server.stop(0)
 
     def test02_clientRPC(self):
         try:
@@ -55,6 +49,7 @@ class TestRaft(unittest.TestCase):
             server.stop(0)
         except Exception as e:
             print(e)
+            server.stop(0)
             raise
 
     def test03_initRole(self):
@@ -76,25 +71,225 @@ class TestRaft(unittest.TestCase):
         all_port = [5000, 5001, 5002]
         all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
 
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
         for port in all_port:
-            p = Process(target=serve, args=(all_port, all_address, port))
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+
+        # time.sleep(10)
+        #
+        # while is_leader is False:
+        #     for addr in all_address:
+        #         res = send_get_status(addr)
+        #         print(addr, res)
+        #         is_leader = res.isLeader
+        #         if is_leader:
+        #             break
+        #         time.sleep(3)
+
+        for i in range(10):
+            time.sleep(1)
+            for addr in all_address:
+                # print(s.role, s.address)
+                res = send_get_status(addr)
+                print(addr, res)
+                is_leader = res.isLeader
+                if is_leader:
+                    break
+            if is_leader:
+                break
+
+        try:
+            self.assertTrue(is_leader)
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
+
+    def test05_leaderDie(self):
+        is_leader = False
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+
+        time.sleep(10)
+
+        while is_leader is False:
+            for addr in all_address:
+                res = send_get_status(addr)
+                if res.isLeader:
+                    is_leader = res.isLeader
+                    print(addr, "I AM LEADER")
+                    deactivate_replica(addr)
+                    break
+                time.sleep(3)
+        time.sleep(10)
+
+        is_leader = False
+
+        while is_leader is False:
+            for addr in all_address:
+                res = send_get_status(addr)
+                if res.isLeader:
+                    print(addr, "I AM THE NEW LEADER")
+                    is_leader = res.isLeader
+                    break
+                time.sleep(3)
+
+        try:
+            self.assertTrue(is_leader)
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
+
+    def test06_duplicatedLeader(self):
+        max_leader_count = 0
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
             p.start()
             raft_nodes.append(p)
 
         time.sleep(1)
-        res = send_get_status("localhost:5000")
-        print(res)
 
-        while is_leader is False:
+        for i in range(10):
+            time.sleep(1)
+            temp_count = 0
             for addr in all_address:
-                # print(s.role, s.address)
                 res = send_get_status(addr)
-                print(res.isLeader)
-                is_leader = res.isLeader
+                if res.isLeader:
+                    temp_count += 1
+            max_leader_count = max(temp_count, max_leader_count)
+        try:
+            self.assertTrue(max_leader_count == 1)
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
+
+    def test07_basicLog(self):
+        alreadySend = False
+        added = [raft_pb2.LogEntry(term=1, command="add 1 2")]
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+
+        time.sleep(10)
+
+        while alreadySend is False:
+            for addr in all_address:
+                res = send_get_status(addr)
+                print(addr, res)
+                if res.isLeader:
+                    send_new_command(addr, "add 1 2")
+                    alreadySend = True
+                    break
+                time.sleep(3)
+
+        time.sleep(10)
+        result = ''
+        for addr in all_address:
+            res = send_get_status(addr)
+            if res.isLeader:
+                result = res.log
                 break
 
-        self.assertTrue(is_leader)
+        print("result:", result)
+        print("added", added)
+        try:
+            self.assertEqual(result, added)
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
 
+    def test08_advancedLogCheck(self):
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+        time.sleep(10)
+        print("sad")
+        for i in range(10):
+            command = "add " + str(i) + " " + str(i)
+            for address in all_address:
+                send_new_command(address, command)
+
+        all_logs = []
+        for addr in all_address:
+            res = send_get_status(addr)
+            all_logs.append(res.log)
+
+        print(all_logs[0])
+
+        try:
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
 
 
 if __name__ == '__main__':

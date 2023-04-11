@@ -1,7 +1,7 @@
 import random
 import grpc
-import rpc.raft_pb2 as raft_pb2
-import rpc.raft_pb2_grpc as raft_pb2_grpc
+import rpc.bft_raft_pb2 as raft_pb2
+import rpc.bft_raft_pb2_grpc as raft_pb2_grpc
 
 
 def send_get_status(addr: str):
@@ -48,6 +48,20 @@ def send_get_committed_cmd(replica_address: str):
     #     with grpc.insecure_channel(replica) as channel:
     #         stub = raft_pb2_grpc.RaftStub(channel)
     #         stub.AppendEntries(request)
+
+def activate_replica(replica_address: str):
+    with grpc.insecure_channel(replica_address) as channel:
+        stub = raft_pb2_grpc.RaftStub(channel)
+        activate_replica_request = raft_pb2.ActivateServerRequest()
+        status_reply = stub.Activate(activate_replica_request)
+        print(status_reply)
+
+def deactivate_replica(replica_address: str):
+    with grpc.insecure_channel(replica_address) as channel:
+        stub = raft_pb2_grpc.RaftStub(channel)
+        activate_replica_request = raft_pb2.DeactivateServerRequest()
+        status_reply = stub.Deactivate(activate_replica_request)
+        print(status_reply)
 
 
 if __name__ == '__main__':

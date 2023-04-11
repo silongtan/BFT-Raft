@@ -41,6 +41,9 @@ class _Role:
         pass
 
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't vote")
+            return
         self.server.reset_timer(self.server.leader_died, self.server.timeout)
         reply = {'term': self.server.term, 'voteMe': False, 'isValid': True}
         return raft_pb2.RequestVoteReply(**reply)
@@ -50,6 +53,9 @@ class _Role:
     # follower
     def append_entries(self, request, context) -> raft_pb2.AppendEntriesReply:
         # pass
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't append entries")
+            return
         leader_term = request.term
         leader_id = request.leaderId
         prev_log_index = request.prevLogIndex
@@ -150,6 +156,9 @@ class _Follower(_Role):
             logging.error("connection error")
 
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
+        if self.server.active is False:
+            print(self.server.address, "follower is not active and can't append vote")
+            return
         should_vote = False
         candidate_id = request.candidateId
         candidate_term = request.term
@@ -246,6 +255,9 @@ class _Candidate(_Role):
     # TODO: barrier
 
     def ask_vote(self, address: str, barrier: threading.Barrier):
+        if self.server.active is False:
+            print(self.server.address, "candidate is not active and can't ask entries")
+            return
         print(self.server.address, 'ask vote', address)
         try:
             with grpc.insecure_channel(address) as channel:
@@ -283,6 +295,9 @@ class _Candidate(_Role):
             logging.error("connection error")
 
     def process_vote(self):
+        if self.server.active is False:
+            print(self.server.address, "replica is not active and can't process vote")
+            return
         print(self.server.address, "process vote, votes_granted", self.server.votes_granted, self.server.address)
         if self.server.votes_granted >= self.server.majority:
             # logging.info("become leader")
@@ -313,6 +328,9 @@ class _Candidate(_Role):
 
 class _Leader(_Role):
     def run(self):
+        if self.server.active is False:
+            print(self.server.address, "leader is not active and can't run")
+            return
         print(self.server.address, "I am leader leading in term:", self.server.term)
         self.server.next_index = {key: len(self.server.log) for key in self.server.peers}
         self.server.match_index = {key: -1 for key in self.server.peers}
@@ -322,11 +340,17 @@ class _Leader(_Role):
 
     def broadcast_append_entries(self):
         # TODO: multi-thread
+        if self.server.active is False:
+            print(self.server.address, "leader is not active and can't broadcast append entries")
+            return
         self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
         for value in self.server.peers:
             self.send_append_entries(value)
 
     def send_append_entries(self, address: str):
+        if self.server.active is False:
+            print(self.server.address, "leader is not active and can't send append entries")
+            return
         with self.server.lock:
             # print(self.server.address, "broadcast append entries to ", address)
             current_role = self.server.role
@@ -345,7 +369,7 @@ class _Leader(_Role):
                         'prevLogIndex': prev_log_index,
                         'prevLogTerm': self.server.log[prev_log_index].term if prev_log_index != -1 else 0,
                         'entries': entries,
-                        'leaderCommitIndex': self.server.committed_index}
+                        'leaderCommitIndex': self.server.committed_index,}
                 # 'signedVote': self.server.signed_votes}
                 # print(self.server.signed_votes)
                 if DEBUG:
