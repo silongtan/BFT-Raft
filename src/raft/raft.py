@@ -299,7 +299,7 @@ def serve_one():
 
     # load credentials
     # server_credentials = grpc.ssl_server_credentials(((private_key,cert_chain),), root_certificates=root_ca)
-    server_credentials = grpc.ssl_server_credentials(((server_private_key, server_cert_chain,),), root_certificates=root_ca, require_client_auth=True)
+    server_credentials = grpc.ssl_server_credentials(((server_private_key, server_cert_chain,),))
 
     # pass down the credentials to the server
     port = server.add_secure_port("localhost:" + p,
