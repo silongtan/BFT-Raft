@@ -73,8 +73,17 @@ class Raft(RaftServicer):
         self.app = Application()
 
         # 拜占庭
+        # for vote verify
         self.public_keys = public_keys
         self.private_key = private_key
+        # for msg signature
+        self.server_private_key = _credentials.load_credential_from_file(f'credentials/{self.address}.key')
+        # print(self.server_private_key)
+        self.cert_chain = _credentials.load_credential_from_file(f'credentials/{self.address}.crt')
+        self.root_cert = grpc.ssl_channel_credentials(_credentials.load_credential_from_file('credentials/root.crt'))
+        # self.creds = grpc.ssl_channel_credentials(self.root_cert)
+        # print(self.root_cert)
+
         self.signed_votes = []
         self.lock = threading.Lock()
         self.isLeaderDead = True
@@ -290,7 +299,7 @@ def serve_one():
 
     # load credentials
     # server_credentials = grpc.ssl_server_credentials(((private_key,cert_chain),), root_certificates=root_ca)
-    server_credentials = grpc.ssl_server_credentials(((server_private_key,server_cert_chain,),))
+    server_credentials = grpc.ssl_server_credentials(((server_private_key, server_cert_chain,),), root_certificates=root_ca, require_client_auth=True)
 
     # pass down the credentials to the server
     port = server.add_secure_port("localhost:" + p,

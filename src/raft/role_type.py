@@ -216,7 +216,8 @@ class _Candidate(_Role):
     def ask_vote(self, address: str, barrier: threading.Barrier):
         print(self.server.address, 'ask vote', address)
         try:
-            with grpc.insecure_channel(address) as channel:
+            with grpc.secure_channel(address, self.server.root_cert) as channel:
+            # with grpc.insecure_channel(address) as channel:
                 stub = raft_pb2_grpc.RaftStub(channel)
                 args = {'term': self.server.term,
                         'candidateId': self.server.id,
