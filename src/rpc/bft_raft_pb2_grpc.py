@@ -25,6 +25,11 @@ class RaftStub(object):
                 request_serializer=bft__raft__pb2.RequestVoteRequest.SerializeToString,
                 response_deserializer=bft__raft__pb2.RequestVoteReply.FromString,
                 )
+        self.ReSendVoteReply = channel.unary_unary(
+                '/raft.Raft/ReSendVoteReply',
+                request_serializer=bft__raft__pb2.RequestVoteReply.SerializeToString,
+                response_deserializer=bft__raft__pb2.Nothing.FromString,
+                )
         self.GetCommittedCmd = channel.unary_unary(
                 '/raft.Raft/GetCommittedCmd',
                 request_serializer=bft__raft__pb2.GetCommittedCmdRequest.SerializeToString,
@@ -63,6 +68,12 @@ class RaftServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def RequestVote(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReSendVoteReply(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -121,6 +132,11 @@ def add_RaftServicer_to_server(servicer, server):
                     servicer.RequestVote,
                     request_deserializer=bft__raft__pb2.RequestVoteRequest.FromString,
                     response_serializer=bft__raft__pb2.RequestVoteReply.SerializeToString,
+            ),
+            'ReSendVoteReply': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReSendVoteReply,
+                    request_deserializer=bft__raft__pb2.RequestVoteReply.FromString,
+                    response_serializer=bft__raft__pb2.Nothing.SerializeToString,
             ),
             'GetCommittedCmd': grpc.unary_unary_rpc_method_handler(
                     servicer.GetCommittedCmd,
@@ -189,6 +205,23 @@ class Raft(object):
         return grpc.experimental.unary_unary(request, target, '/raft.Raft/RequestVote',
             bft__raft__pb2.RequestVoteRequest.SerializeToString,
             bft__raft__pb2.RequestVoteReply.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ReSendVoteReply(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/raft.Raft/ReSendVoteReply',
+            bft__raft__pb2.RequestVoteReply.SerializeToString,
+            bft__raft__pb2.Nothing.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

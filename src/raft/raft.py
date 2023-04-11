@@ -8,7 +8,8 @@ from concurrent import futures
 import sys
 import grpc
 import rsa
-
+# from grpc import aio
+import asyncio
 # import rpc.raft_pb2 as raft_pb2
 # import rpc.raft_pb2_grpc as raft_pb2_grpc
 # from rpc.raft_pb2_grpc import RaftServicer
@@ -78,7 +79,8 @@ class Raft(RaftServicer):
         self.private_key = private_key
         self.signed_votes = []
         self.lock = threading.Lock()
-        self.isLeaderDead = True
+        self.delay_vote = None
+        # self.should_vote_delay = False
         self.init()
 
     @staticmethod
@@ -135,6 +137,32 @@ class Raft(RaftServicer):
                 self.log.append({'term': self.term, 'command': request.command})
                 return self.get_status_report()
 
+    def ReSendVoteReply(self, response, context):
+        # print("ReSendVoteReply", response)
+        # never reach here
+        if not response.isValid:
+            print('invalid vote,reset timer')
+            self.reset_timer(dispatch(self).process_vote, self.timeout)
+            return raft_pb2.Nothing()
+        # response = stub.RequestVote.future(request).result()
+        # print("vote response", response)
+        if response.voteMe:
+            self.votes_granted += 1
+            # print('append', response)
+            self.signed_votes.append(response)
+            if self.votes_granted >= self.majority:
+                self.become(RoleType.LEADER)
+
+        if response.term > self.term:
+            self.term = response.term
+            self.become(RoleType.FOLLOWER)
+            self.vote_for = -1
+            self.votes_granted = 0
+            self.timeout = float(
+                randrange(ELECTION_TIMEOUT_MAX_MILLIS // 2, ELECTION_TIMEOUT_MAX_MILLIS) / 1000)
+            self.reset_timer(self.leader_died, self.timeout)
+        return raft_pb2.Nothing()
+
     # helper functions for replica to get status report and send back to client
     def get_status_report(self) -> raft_pb2.StatusReport:
         args = {'term': self.term, 'committedIndex': self.committed_index,
@@ -178,12 +206,12 @@ class Raft(RaftServicer):
 
     def become(self, role: RoleType):
         logging.debug(self.address + " become " + str(role) + ", prev term: " + str(self.term))
-        self.isLeaderDead = False
+        # self.election_timer.cancel()
         with self.lock:
             self.role = role
         dispatch(self).run()
 
-    def reset_timer(self, function, timeout: int):
+    def reset_timer(self, function, timeout: float):
         self.election_timer.cancel()  # cancel the previous timer
         self.election_timer = threading.Timer(timeout, function)
         self.election_timer.start()
@@ -195,8 +223,12 @@ class Raft(RaftServicer):
         with self.lock:
             if self.role != RoleType.FOLLOWER:
                 return
+        if self.delay_vote is not None:
+            dispatch(self).resend_vote_reply(self.delay_vote)
+            self.become(RoleType.FOLLOWER)
+            # logging.debug(self.address + " leader died")
+            return
         logging.debug(self.address + " leader died")
-        self.isLeaderDead = True
         self.become(RoleType.CANDIDATE)
 
     def get_last_log_index(self):
@@ -208,7 +240,8 @@ class Raft(RaftServicer):
     # both inclusive
     def apply_log(self, index: int):
         for i in range(self.last_applied + 1, index + 1):
-            self.app.execute(self.log[i])
+            # pass
+            self.app.execute(self.log[i].get('command'))
         self.last_applied = index
 
     def sign_msg(self, msg):
@@ -237,8 +270,39 @@ class Raft(RaftServicer):
         # else:
         #     return False
 
-    # def decode_msg(self, encrypted_msg):
-    #     return rsa.decrypt(encrypted_msg, self.private_key).decode()
+
+# def decode_msg(self, encrypted_msg):
+#     return rsa.decrypt(encrypted_msg, self.private_key).decode()
+
+
+async def async_server():
+    all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+    p = sys.argv[1]
+    with open(f"keys/private/localhost:{p}.pem", "r") as f:
+        private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+    public_keys = {}
+    for address in all_address:
+        with open(f"keys/public/{address}.pem", "r") as f:
+            # public_key = f.read()
+            # public_key = RSA.importKey(public_key)
+            public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+            public_keys[address] = public_key
+    print("Starting server on port: " + p)
+    raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
+    # server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = aio.server()
+    # server = aio.server()
+    raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
+    server.add_insecure_port("localhost:" + p)
+    await server.start()
+    await server.wait_for_termination()
+    # try:
+    #     server.start()
+    #     while True:
+    #         server.wait_for_termination()
+    # except KeyboardInterrupt:
+    #     server.stop(0)
+    #     print("Server" + raft_server.address + "is shutting down")
 
 
 def serve_one():
@@ -268,6 +332,7 @@ def serve_one():
     print("Starting server on port: " + p)
     raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    # server = aio.server()
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
     server.add_insecure_port("localhost:" + p)
     try:
@@ -329,3 +394,4 @@ def serve_one():
 
 if __name__ == "__main__":
     serve_one()
+    # asyncio.run(async_server())
