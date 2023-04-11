@@ -279,6 +279,7 @@ class _Leader(_Role):
             print(self.server.address, "leader is not active and can't broadcast append entries")
             return
         self.server.reset_timer(self.broadcast_append_entries, HEARTBEAT_INTERVAL_SECONDS)
+        # self.server.reset_timer(dispatch(self.server).append_entries,HEARTBEAT_INTERVAL_SECONDS)
         for value in self.server.peers:
             self.send_append_entries(value)
 
@@ -332,13 +333,19 @@ class _Leader(_Role):
                     # TODO
                     self.server.next_index[address] += len(entries)
                     self.server.match_index[address] = self.server.next_index[address] - 1
+                print('[ppppppppppp',self.server.committed_index + 1, len(self.server.log))
+                print(self.server.log)
                 for i in range(self.server.committed_index + 1, len(self.server.log)):
+                    print('bbbbbbbbbbbbb')
                     if self.server.log[i].term == self.server.term:
                         count = 1
+                        print('aaaaaaaaaaaaaaaaa')
                         for value in self.server.match_index.values():
+                            print("????????????????")
                             if value >= i:
                                 count += 1
                         if count >= self.server.majority:
+                            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                             self.server.committed_index = i
                             self.server.apply_log(self.server.committed_index)
 

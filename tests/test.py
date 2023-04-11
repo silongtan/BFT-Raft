@@ -241,6 +241,7 @@ class TestRaft(unittest.TestCase):
             res = send_get_status(addr)
             if res.isLeader:
                 result = res.log
+                print("commited:", res.committedIndex)
                 break
 
         print("result:", result)
@@ -253,7 +254,7 @@ class TestRaft(unittest.TestCase):
             for p in raft_nodes:
                 p.terminate()
 
-    def test08_advancedLogCheck(self):
+    def test08_advancedConsistencyCheck(self):
         raft_nodes = []
         all_port = [5000, 5001, 5002]
         all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
@@ -275,14 +276,33 @@ class TestRaft(unittest.TestCase):
         for i in range(10):
             command = "add " + str(i) + " " + str(i)
             for address in all_address:
-                send_new_command(address, command)
+                res = send_get_status(address)
+                if res.isLeader:
+                    send_new_command(address, command)
 
         all_logs = []
+        committed_logs = []
         for addr in all_address:
             res = send_get_status(addr)
+            print("hihihihihi")
+            print(res.committedIndex)
             all_logs.append(res.log)
+            committed_logs.append(res.committedIndex)
 
-        print(all_logs[0])
+        consistent = False
+        if committed_logs[0] == committed_logs[1]:
+            if all_logs[0] == all_logs[1]:
+                consistent = True
+        elif committed_logs[0] == committed_logs[2]:
+            if all_logs[0] == all_logs[2]:
+                consistent = True
+        elif committed_logs[1] == committed_logs[2]:
+            if all_logs[1] == all_logs[2]:
+                consistent = True
+
+
+
+        # print(all_logs[0])
 
         try:
             for p in raft_nodes:
