@@ -62,7 +62,7 @@ class _Role:
         leader_id = request.leaderId
         prev_log_index = request.prevLogIndex
         prev_log_term = request.prevLogTerm
-        leader_commit_index = request.leaderCommitIndex
+        leader_commit_index = request.leaderCommitIndex or 0
         success = False
 
         # print(len(request.signedVote) + 1)
@@ -118,8 +118,12 @@ class _Role:
                 self.server.log = self.server.log[:prev_log_index + 1] + [{'term': r.term, 'command': r.command} for r
                                                                           in request.entries]
         if leader_commit_index > self.server.committed_index:
-            self.server.commit_index = min(leader_commit_index, len(self.server.log) - 1)
-            self.server.apply_log(self.server.commit_index)
+            print('leader_commit_index > self.server.committed_index', leader_commit_index, self.server.committed_index)
+            print('leader_commit_index', leader_commit_index)
+            print('len(self.server.log) - 1', len(self.server.log) - 1)
+            self.server.committed_index = min(leader_commit_index, len(self.server.log) - 1)
+            print('committed_index', self.server.committed_index)
+            self.server.apply_log(self.server.committed_index)
         if leader_term > self.server.term:
             self.server.term = leader_term
 
@@ -369,12 +373,12 @@ class _Leader(_Role):
                 # print('print(prev_log_index)',prev_log_index)
                 entries = self.server.log[self.server.next_index[address]:]
                 entries = [raft_pb2.LogEntry(term=entry.get('term'), command=entry.get('command')) for entry in entries]
-                print('prev_log_index: ', prev_log_index)
-                print('tttttt: ', self.server.log, )
-                if prev_log_index != -1:
-                    print('self.server.log[prev_log_index]', self.server.log[prev_log_index])
-                print('self.server.log[prev_log_index].term if prev_log_index != -1 else 0:',
-                      self.server.log[prev_log_index].get('term') if prev_log_index != -1 else 0)
+                # print('prev_log_index: ', prev_log_index)
+                # print('tttttt: ', self.server.log, )
+                # if prev_log_index != -1:
+                #     print('self.server.log[prev_log_index]', self.server.log[prev_log_index])
+                # print('self.server.log[prev_log_index].term if prev_log_index != -1 else 0:',
+                #       self.server.log[prev_log_index].get('term') if prev_log_index != -1 else 0)
                 args = {'term': self.server.term,
                         'leaderId': self.server.id,
                         'prevLogIndex': prev_log_index,
@@ -417,6 +421,7 @@ class _Leader(_Role):
                             if value >= i:
                                 count += 1
                         if count >= self.server.majority:
+                            print('committed')
                             self.server.committed_index = i
                             self.server.apply_log(self.server.committed_index)
 

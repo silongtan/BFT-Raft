@@ -32,9 +32,9 @@ def send_new_command(addr: str, request: str):
 #         for replica in self.raft_replicas:
 #             self.stubs[replica] = grpc.insecure_channel(replica)
 
-    # append_entries
+# append_entries
 
-    # @staticmethod
+# @staticmethod
 def send_get_committed_cmd(replica_address: str):
     with grpc.insecure_channel(replica_address) as channel:
         stub = raft_pb2_grpc.RaftStub(channel)
@@ -49,12 +49,14 @@ def send_get_committed_cmd(replica_address: str):
     #         stub = raft_pb2_grpc.RaftStub(channel)
     #         stub.AppendEntries(request)
 
+
 def activate_replica(replica_address: str):
     with grpc.insecure_channel(replica_address) as channel:
         stub = raft_pb2_grpc.RaftStub(channel)
         activate_replica_request = raft_pb2.ActivateServerRequest()
         status_reply = stub.Activate(activate_replica_request)
         print(status_reply)
+
 
 def deactivate_replica(replica_address: str):
     with grpc.insecure_channel(replica_address) as channel:
@@ -65,9 +67,10 @@ def deactivate_replica(replica_address: str):
 
 
 if __name__ == '__main__':
-    for i in range(5000,5003):
+    for i in range(5000, 5003):
         command = "add " + str(i) + " " + str(i)
-        send_new_command(f"localhost:{i}", command)
+        # send_new_command(f"localhost:{i}", command)
+        send_get_status(f"localhost:{i}")
         # print(status_reply)
     # for i in range(5000,5003):
     #     with grpc.insecure_channel(f"localhost:{i}") as channel:

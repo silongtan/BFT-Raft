@@ -102,7 +102,7 @@ class Raft(RaftServicer):
             print("replica is not active")
             return
 
-        print(self.address + " received AppendEntriesReply from " + str(request.leaderId))
+        print(self.address + " received AppendEntries from " + str(request.leaderId))
         response = dispatch(self).append_entries(request, context)
         # logging.debug(self.address + " - append entries success: " + str(response.success))
         # print(request)
