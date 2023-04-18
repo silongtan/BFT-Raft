@@ -118,9 +118,9 @@ class _Role:
                 self.server.log = self.server.log[:prev_log_index + 1] + [{'term': r.term, 'command': r.command} for r
                                                                           in request.entries]
         if leader_commit_index > self.server.committed_index:
-            print('leader_commit_index > self.server.committed_index', leader_commit_index, self.server.committed_index)
-            print('leader_commit_index', leader_commit_index)
-            print('len(self.server.log) - 1', len(self.server.log) - 1)
+            # print('leader_commit_index > self.server.committed_index', leader_commit_index, self.server.committed_index)
+            # print('leader_commit_index', leader_commit_index)
+            # print('len(self.server.log) - 1', len(self.server.log) - 1)
             self.server.committed_index = min(leader_commit_index, len(self.server.log) - 1)
             print('committed_index', self.server.committed_index)
             self.server.apply_log(self.server.committed_index)
@@ -149,7 +149,7 @@ class _Follower(_Role):
         # msg = str(delay_vote.get('candidate_term')) + " " + str(
         #     delay_vote.get('candidate_id')) + " " + self.server.address + " localhost:" + str(
         #     delay_vote.get('candidate_id'))
-        print('resend_vote_reply  delay_vote', delay_vote)
+        # print('resend_vote_reply  delay_vote', delay_vote)
         # print(msg)
         # reply = {'term': self.server.term, 'voteMe': True, 'signature': self.server.sign_msg(msg),
         #          'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(delay_vote.get('candidate_id')),

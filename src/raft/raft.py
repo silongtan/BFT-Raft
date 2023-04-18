@@ -85,7 +85,10 @@ class Raft(RaftServicer):
 
     @staticmethod
     def get_majority(num):
-        return (num + 1) // 2
+        # (num + 1) // 2
+        # print((num + 1) // 2)
+        # print('quorum: ', (num + 2) // 3)
+        return (num + 2) // 3
 
     def init(self):
         # print(self.majority)
@@ -250,20 +253,15 @@ class Raft(RaftServicer):
     # @staticmethod
     # msg is plain text, verify AE valid
     def verify_msg(self, term, leader_id, vote_from, vote_for, signature) -> bool:
-        # print("checking " + "localhost:"+str(leader_id), str(vote_for))
 
         if "localhost:" + str(leader_id) != str(vote_for):
-            # print('not equal')
             return False
         msg = str(term) + " " + str(leader_id) + " " + str(vote_from) + " " + str(vote_for)
-        # print('sign',msg)
         public_key = self.public_keys[vote_from]
         try:
             rsa.verify(msg.encode(), signature, public_key)
-            # print(True)
             return True
         except rsa.VerificationError:
-            # print(False)
             return False
         # if rsa.verify(msg.encode(), signature, public_key):
         #     return True
@@ -306,8 +304,8 @@ async def async_server():
 
 
 def serve_one():
-    all_port = [5000, 5001, 5002]
-    all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+    all_port = [5000, 5001, 5002, 5003]
+    all_address = ["localhost:5000", "localhost:5001", "localhost:5002", "localhost:5003"]
 
     # for p in all_port:
     p = sys.argv[1]
@@ -330,7 +328,7 @@ def serve_one():
 
     # p = str(port)
     print("Starting server on port: " + p)
-    raft_server = Raft(int(p), all_address, 3, public_keys, private_key)
+    raft_server = Raft(int(p), all_address, len(all_address), public_keys, private_key)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     # server = aio.server()
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)
