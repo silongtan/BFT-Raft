@@ -69,8 +69,8 @@ def deactivate_replica(replica_address: str):
 if __name__ == '__main__':
     for i in range(5000, 5003):
         command = "add " + str(i) + " " + str(i)
-        # send_new_command(f"localhost:{i}", command)
-        send_get_status(f"localhost:{i}")
+        send_new_command(f"localhost:{i}", command)
+        # send_get_status(f"localhost:{i}")
         # print(status_reply)
     # for i in range(5000,5003):
     #     with grpc.insecure_channel(f"localhost:{i}") as channel:

@@ -88,7 +88,8 @@ class Raft(RaftServicer):
         # (num + 1) // 2
         # print((num + 1) // 2)
         # print('quorum: ', (num + 2) // 3)
-        return (num + 2) // 3
+        # return (num + 2) // 3
+        return (num + 1) // 2
 
     def init(self):
         # print(self.majority)
@@ -228,11 +229,11 @@ class Raft(RaftServicer):
         with self.lock:
             if self.role != RoleType.FOLLOWER:
                 return
-        if self.delay_vote is not None:
-            dispatch(self).resend_vote_reply(self.delay_vote)
-            self.become(RoleType.FOLLOWER)
-            # logging.debug(self.address + " leader died")
-            return
+        # if self.delay_vote is not None:
+        #     dispatch(self).resend_vote_reply(self.delay_vote)
+        #     self.become(RoleType.FOLLOWER)
+        #     # logging.debug(self.address + " leader died")
+        #     return
         logging.debug(self.address + " leader died")
         self.become(RoleType.CANDIDATE)
 
@@ -250,11 +251,13 @@ class Raft(RaftServicer):
         self.last_applied = index
 
     def sign_msg(self, msg):
+        return bytes("", 'utf-8')
         return rsa.sign(msg.encode(), self.private_key, 'SHA-256')
 
     # @staticmethod
     # msg is plain text, verify AE valid
     def verify_msg(self, term, leader_id, vote_from, vote_for, signature) -> bool:
+        return True
 
         if "localhost:" + str(leader_id) != str(vote_for):
             return False
@@ -313,24 +316,24 @@ def serve_one():
     p = sys.argv[1]
     # private_key = sys.argv[2]
     # read private key from file
-    with open(f"keys/private/localhost:{p}.pem", "r") as f:
-        # private_key = f.read()
-        # private_key = RSA.importKey(private_key)
-        private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
-        # print(private_key)
-
-    public_keys = {}
-    for address in all_address:
-        with open(f"keys/public/{address}.pem", "r") as f:
-            # public_key = f.read()
-            # public_key = RSA.importKey(public_key)
-            public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
-            public_keys[address] = public_key
+    # with open(f"keys/private/localhost:{p}.pem", "r") as f:
+    #     # private_key = f.read()
+    #     # private_key = RSA.importKey(private_key)
+    #     private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+    #     # print(private_key)
+    #
+    # public_keys = {}
+    # for address in all_address:
+    #     with open(f"keys/public/{address}.pem", "r") as f:
+    #         # public_key = f.read()
+    #         # public_key = RSA.importKey(public_key)
+    #         public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+    #         public_keys[address] = public_key
             # print(public_key)
 
     # p = str(port)
     print("Starting server on port: " + p)
-    raft_server = Raft(int(p), all_address, len(all_address), public_keys, private_key)
+    raft_server = Raft(int(p), all_address, len(all_address), ["public_keys"], "private_key")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     # server = aio.server()
     raft_pb2_grpc.add_RaftServicer_to_server(raft_server, server)

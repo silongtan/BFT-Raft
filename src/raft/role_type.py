@@ -81,15 +81,15 @@ class _Role:
         #     return raft_pb2.AppendEntriesReply(**reply)
 
         # check integrity
-        for vote in request.signedVote:
-            vote_from = vote.voteFrom
-            vote_for = vote.voteFor
-            signature = vote.signature
-            if not self.server.verify_msg(leader_term, leader_id, vote_from, vote_for, signature):
-                raise Exception("invalid signature")
-                reply = {"term": self.server.term, "success": False}
-                print("never reach!!!!!!!!!")
-                return raft_pb2.AppendEntriesReply(**reply)
+        # for vote in request.signedVote:
+        #     vote_from = vote.voteFrom
+        #     vote_for = vote.voteFor
+        #     signature = vote.signature
+        #     if not self.server.verify_msg(leader_term, leader_id, vote_from, vote_for, signature):
+        #         raise Exception("invalid signature")
+        #         reply = {"term": self.server.term, "success": False}
+        #         print("never reach!!!!!!!!!")
+        #         return raft_pb2.AppendEntriesReply(**reply)
 
         self.server.isLeaderDead = False
         # print("reaching here")
@@ -154,14 +154,14 @@ class _Follower(_Role):
         # reply = {'term': self.server.term, 'voteMe': True, 'signature': self.server.sign_msg(msg),
         #          'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(delay_vote.get('candidate_id')),
         #          'isValid': True}
-        try:
-            with grpc.insecure_channel(delay_vote.get('voteFor')) as channel:
-                stub = raft_pb2_grpc.RaftStub(channel)
-                request = raft_pb2.RequestVoteReply(**delay_vote, isValid=True)
-                response = stub.ReSendVoteReply(request)
-        except grpc.RpcError as e:
-            print("connection error", e)
-            logging.error("connection error")
+        # try:
+        #     with grpc.insecure_channel(delay_vote.get('voteFor')) as channel:
+        #         stub = raft_pb2_grpc.RaftStub(channel)
+        #         request = raft_pb2.RequestVoteReply(**delay_vote, isValid=True)
+        #         response = stub.ReSendVoteReply(request)
+        # except grpc.RpcError as e:
+        #     print("connection error", e)
+        #     logging.error("connection error")
 
     def vote(self, request, context) -> raft_pb2.RequestVoteReply:
         if self.server.active is False:
@@ -177,12 +177,12 @@ class _Follower(_Role):
         #     # print('server'+self.server.)
         #     return raft_pb2.RequestVoteReply(**reply)
         # vote for the candidate with the higher term
-        if self.server.delay_vote is not None:
-            reply = {'term': self.server.term, 'voteMe': False, 'signature': None,
-                     'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(candidate_id),
-                     'isValid': True}
-            # print('server'+self.server.)
-            return raft_pb2.RequestVoteReply(**reply)
+        # if self.server.delay_vote is not None:
+        #     reply = {'term': self.server.term, 'voteMe': False, 'signature': None,
+        #              'voteFrom': self.server.address, 'voteFor': 'localhost:' + str(candidate_id),
+        #              'isValid': True}
+        #     # print('server'+self.server.)
+        #     return raft_pb2.RequestVoteReply(**reply)
 
         if candidate_term < self.server.term:
             should_vote = False
@@ -214,8 +214,8 @@ class _Follower(_Role):
         # raft_pb2.RequestVoteReply(**reply).Re, self.server.timeout)
         # threading.Timer(3, lambda: raft_pb2.RequestVoteReply(**reply)).start()
         if reply['voteMe']:
-            self.server.delay_vote = reply
-            return raft_pb2.RequestVoteReply(**reply, isValid=False)
+            # self.server.delay_vote = reply
+            return raft_pb2.RequestVoteReply(**reply, isValid=True)
         else:
             return raft_pb2.RequestVoteReply(**reply, isValid=True)
 
