@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package raft;
+
+// The greeting service definition.
+service Raft {
+  rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesReply);
+
+  rpc RequestVote (RequestVoteRequest) returns (RequestVoteReply);
+
+  rpc ReSendVoteReply (RequestVoteReply) returns (Nothing);
+
+  // GetCommittedCmd -- called (only) by the Controller.  This method provides an input argument
+  // `index`.  If the Raft peer has a log entry at the given `index`, and that log entry has been
+  // committed (per the Raft algorithm), then the command stored in the log entry should be returned
+  // to the Controller.  otherwise, the Raft peer should return the value 0, which is not a valid
+  // command number and indicates that no committed log entry exists at that index
+  // for test only
+  rpc GetCommittedCmd (GetCommittedCmdRequest) returns (GetCommittedCmdReply);
+
+  // client intervention
+//  rpc Restart (RestartRequest) returns (StatusReport);
+
+  // for test only
+  rpc GetStatus (GetStatusRequest) returns (StatusReport);
+
+  // send a new command to the Raft peer, mutate state
+  rpc NewCommand (NewCommandRequest) returns (StatusReport);
+
+  rpc Activate (ActivateServerRequest) returns (StatusReport);
+
+  rpc Deactivate (DeactivateServerRequest) returns (StatusReport);
+}
+
+//message RestartRequest{
+//
+//}
+
+//message RestartReply
+//message RestartReply{
+//  int32 term = 1;
+//  int32 committedIndex = 2;
+//  bool isLeader = 3;
+//  repeated LogEntry log = 4;
+//}
+
+
+message LogEntry {
+  int32 term = 1; // term when entry was received by leader
+  string command = 2;
+}
+
+// for test only
+// StatusReport is sent from Raft node to Controller in response to command and status requests.
+message StatusReport{
+  int32 term = 1;
+  int32 committedIndex = 2;
+  bool isLeader = 3;
+  repeated LogEntry log = 4;
+}
+
+message AppendEntriesRequest{
+  int32 term = 1;
+  int32 leaderId = 2;
+  int32 prevLogIndex = 3;
+  int32 prevLogTerm = 4;
+  repeated LogEntry entries = 5;
+  int32 leaderCommitIndex = 6;
+  repeated RequestVoteReply signedVote = 7;
+}
+
+message AppendEntriesReply{
+  int32 term = 1;
+  bool success = 2;
+}
+
+message RequestVoteRequest{
+  int32 term = 1;
+  int32 candidateId = 2;
+  int32 lastLogIndex = 3;
+  int32 lastLogTerm = 4;
+}
+
+message RequestVoteReply{
+  int32 term = 1;
+  bool voteMe = 2;
+  bytes signature = 3; // verify if the reply is from 'from' location
+  string voteFrom = 4;
+  string voteFor = 5;
+  bool isValid = 6;
+}
+
+message GetCommittedCmdRequest{
+  int32 index = 1; // index of the command
+}
+
+message GetCommittedCmdReply{
+  string command = 1;
+  //  int32 term = 1; // TODO: what type it should be
+}
+
+message GetStatusRequest{
+  // empty
+}
+
+message NewCommandRequest{
+  string command = 1;
+}
+
+message Nothing{
+}
+message ActivateServerRequest{
+  // empty
+}
+
+message DeactivateServerRequest{
+  // empty
+}

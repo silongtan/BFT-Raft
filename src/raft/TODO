@@ -1,0 +1,13 @@
+1. 如果不是leader收到new command，就把它转发给leader
+2. multi-thread
+3. 测试app
+4. 一致性
+5. 测试status report
+6. 如何让server挂掉 stop？
+7. app execute security issue
+8. 拜占庭问题
+
+
+
+TODO:
+1. send vote 需要等leader真的死了才能发

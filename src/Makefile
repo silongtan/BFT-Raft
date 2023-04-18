@@ -1,6 +1,8 @@
+# grpc.py file import path is not correct generated
 proto:
-	python -m grpc_tools.protoc -I protos --python_out=. --grpc_python_out=. protos/greet.proto
-
+	python -m grpc_tools.protoc -I rpc/protos --python_out=rpc/ --grpc_python_out=rpc/ rpc/protos/raft.proto
+bft:
+	python -m grpc_tools.protoc -I rpc/protos --python_out=rpc/ --grpc_python_out=rpc/ rpc/protos/bft_raft.proto
 server:
 	python3 rpc/server.py
 
