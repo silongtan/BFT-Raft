@@ -173,7 +173,9 @@ class Raft(RaftServicer):
         # print('get_status_report')
         # print(self.role == RoleType.LEADER)
         report = raft_pb2.StatusReport(**args)
-        print("LOG: ", self.log)
+
+        # print("LOG: ", self.log)
+
         if not self.log:
             report.log.extend(self.log)
         else:

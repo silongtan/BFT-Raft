@@ -233,15 +233,19 @@ class TestRaft(unittest.TestCase):
                     send_new_command(addr, "add 1 2")
                     alreadySend = True
                     break
-                time.sleep(3)
+                time.sleep(1)
 
         time.sleep(10)
         result = ''
         for addr in all_address:
             res = send_get_status(addr)
+            print('hahaha')
+            print(res.committedIndex)
+            print(res.log)
+            print('end')
             if res.isLeader:
                 result = res.log
-                break
+                # break
 
         print("result:", result)
         print("added", added)
@@ -253,7 +257,7 @@ class TestRaft(unittest.TestCase):
             for p in raft_nodes:
                 p.terminate()
 
-    def test08_advancedLogCheck(self):
+    def test08_advancedConsistencyCheck(self):
         raft_nodes = []
         all_port = [5000, 5001, 5002]
         all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
@@ -275,14 +279,101 @@ class TestRaft(unittest.TestCase):
         for i in range(10):
             command = "add " + str(i) + " " + str(i)
             for address in all_address:
-                send_new_command(address, command)
+                res = send_get_status(address)
+                if res.isLeader:
+                    send_new_command(address, command)
+        # command = "add " + str(1) + " " + str(1)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        # command = "add " + str(2) + " " + str(2)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
 
-        all_logs = []
+        time.sleep(5)
+
+        committed_logs = []
         for addr in all_address:
             res = send_get_status(addr)
-            all_logs.append(res.log)
+            print("hihihihihi")
+            print(res.committedIndex)
+            committed_logs.append(res.committedIndex)
 
-        print(all_logs[0])
+        consistent = False
+        if committed_logs[0] == committed_logs[1]:
+            consistent = True
+        elif committed_logs[0] == committed_logs[2]:
+            consistent = True
+        elif committed_logs[1] == committed_logs[2]:
+            consistent = True
+
+        # print(all_logs[0])
+
+        try:
+            self.assertEqual(consistent, True)
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
+
+    def test09_timeAnalysis10(self):
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+        time.sleep(10)
+
+        start = time.time()
+
+        for i in range(10):
+            command = "add " + str(i) + " " + str(i)
+            for address in all_address:
+                res = send_get_status(address)
+                if res.isLeader:
+                    send_new_command(address, command)
+        # command = "add " + str(1) + " " + str(1)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        # command = "add " + str(2) + " " + str(2)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        iscommitted = False
+        while iscommitted is False:
+            print('aaaa')
+            for addr in all_address:
+                res = send_get_status(addr)
+                print('start')
+                print(res.isLeader)
+                print(iscommitted)
+                print(res.committedIndex)
+                print("end")
+                if res.isLeader:
+                    if res.committedIndex == 9:
+                        print('bbbb')
+                        iscommitted = True
+                        break
+        end = time.time()
+        print(end - start)
 
         try:
             for p in raft_nodes:
@@ -291,6 +382,180 @@ class TestRaft(unittest.TestCase):
             for p in raft_nodes:
                 p.terminate()
 
+    def test10_timeAnalysis100(self):
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+        time.sleep(10)
+
+        start = time.time()
+
+        for i in range(100):
+            command = "add " + str(i) + " " + str(i)
+            for address in all_address:
+                res = send_get_status(address)
+                if res.isLeader:
+                    send_new_command(address, command)
+        # command = "add " + str(1) + " " + str(1)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        # command = "add " + str(2) + " " + str(2)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        iscommitted = False
+        while iscommitted is False:
+
+            for addr in all_address:
+                res = send_get_status(addr)
+
+                if res.isLeader:
+                    if res.committedIndex == 99:
+                        iscommitted = True
+                        break
+        end = time.time()
+        print(end - start)
+
+        try:
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
+
+    def test11_timeAnalysis1000(self):
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+        time.sleep(10)
+
+        start = time.time()
+
+        for i in range(1000):
+            command = "add " + str(i) + " " + str(i)
+            for address in all_address:
+                res = send_get_status(address)
+                if res.isLeader:
+                    send_new_command(address, command)
+        # command = "add " + str(1) + " " + str(1)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        # command = "add " + str(2) + " " + str(2)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        iscommitted = False
+        while iscommitted is False:
+            print('aaaa')
+            for addr in all_address:
+                res = send_get_status(addr)
+
+                if res.isLeader:
+                    if res.committedIndex == 999:
+                        iscommitted = True
+                        break
+        end = time.time()
+        print(end - start)
+
+        try:
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
+
+    def test12_timeAnalysis5000(self):
+        raft_nodes = []
+        all_port = [5000, 5001, 5002]
+        all_address = ["localhost:5000", "localhost:5001", "localhost:5002"]
+
+        public_keys = {}
+        for address in all_address:
+            with open(f"../src/raft/keys/public/{address}.pem", "r") as f:
+                public_key = rsa.PublicKey.load_pkcs1(f.read().encode())
+                public_keys[address] = public_key
+
+        for port in all_port:
+            with open(f"../src/raft/keys/private/localhost:{port}.pem", "r") as f:
+                private_key = rsa.PrivateKey.load_pkcs1(f.read().encode())
+            p = Process(target=serve, args=(all_address, port, public_keys, private_key))
+            p.start()
+            raft_nodes.append(p)
+        time.sleep(10)
+
+        start = time.time()
+
+        for i in range(5000):
+            command = "add " + str(i) + " " + str(i)
+            for address in all_address:
+                res = send_get_status(address)
+                if res.isLeader:
+                    send_new_command(address, command)
+        # command = "add " + str(1) + " " + str(1)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        # command = "add " + str(2) + " " + str(2)
+        # for address in all_address:
+        #     res = send_get_status(address)
+        #     if res.isLeader:
+        #         send_new_command(address, command)
+        iscommitted = False
+        while iscommitted is False:
+            print('aaaa')
+            for addr in all_address:
+                res = send_get_status(addr)
+                print('start')
+                print(res.isLeader)
+                print(iscommitted)
+                print(res.committedIndex)
+                print("end")
+                if res.isLeader:
+                    if res.committedIndex == 4999:
+                        iscommitted = True
+                        break
+        end = time.time()
+        print(end - start)
+
+        try:
+            for p in raft_nodes:
+                p.terminate()
+        except KeyboardInterrupt:
+            for p in raft_nodes:
+                p.terminate()
 
 if __name__ == '__main__':
     unittest.main()

@@ -10,7 +10,7 @@ def send_get_status(addr: str):
         stub = raft_pb2_grpc.RaftStub(channel)
         get_status_request = raft_pb2.GetStatusRequest()
         status_reply = stub.GetStatus(get_status_request)
-        print(status_reply)
+        # print(status_reply)
         return status_reply
 
 
@@ -20,7 +20,7 @@ def send_new_command(addr: str, request: str):
         stub = raft_pb2_grpc.RaftStub(channel)
         new_command_request = raft_pb2.NewCommandRequest(command=request)
         status_reply = stub.NewCommand(new_command_request)
-        print(status_reply)
+        # print(status_reply)
         # print(status_reply.log)
 
 
